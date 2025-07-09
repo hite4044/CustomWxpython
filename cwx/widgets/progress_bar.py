@@ -3,14 +3,14 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from .. import KeyFrameWay
+from .. import KeyFrameWay, SCALE
 from ..animation import EZKeyFrameAnimation
 from ..style import ProgressBarStyle, Style
 
 
 class ProgressBar(AnimationWidget):
     style: ProgressBarStyle
-    border_pen: wx.Pen
+    border_pen: wx.GraphicsPenInfo
     bg_brush: wx.Brush
     value_anim: EZKeyFrameAnimation
 
@@ -20,15 +20,15 @@ class ProgressBar(AnimationWidget):
         super().__init__(parent, style, widget_style, fps=60)
         self.value = value
         self.range = range
-        self.value_anim = EZKeyFrameAnimation(10, KeyFrameWay.SMOOTH, value / range, value / range)
+        self.value_anim = EZKeyFrameAnimation(0.3, KeyFrameWay.QUADRATIC_EASE, value / range, value / range)
         self.reg_animation("value", self.value_anim)
 
         if style | wx.VERTICAL:
             self.direction = wx.VERTICAL
-            self.CacheBestSize(wx.Size(200, 21))
+            self.CacheBestSize((200, 21))
         else:
             self.direction = wx.HORIZONTAL
-            self.CacheBestSize(wx.Size(21, 200))
+            self.CacheBestSize((21, 200))
         self.SetSize(type_cast(tuple[int, int], self.GetBestSize().GetIM()))
 
     @staticmethod
@@ -38,24 +38,27 @@ class ProgressBar(AnimationWidget):
     def load_widget_style(self, style: ProgressBarStyle):
         super().load_widget_style(style)
         self.bg_brush = wx.Brush(style.bg)
-        self.border_pen = wx.Pen(style.border)
 
     def draw_content(self, gc: wx.GraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetClientSize())
+        border_width = self.style.border.width * SCALE
 
+        # 背景
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
-        gc.SetPen(gc.CreatePen(self.border_pen))
-        gc.DrawRoundedRectangle(0, 0, w - 1, h - 1, self.style.corner_radius)
+        gc.SetPen(self.style.border.create_pen(gc, (w, h)))
+        gc.DrawRoundedRectangle(border_width, border_width, w - border_width*2, h - border_width*2,
+                                self.style.corner_radius)
 
+        # 进度条
         gc.SetPen(gc.CreatePen(wx.Pen(wx.RED, 0, wx.PENSTYLE_TRANSPARENT)))
-        target_x = (w - 2) * self.value_anim.value  # self.value / self.range
-        print(target_x)
-        bar_brush = gc.CreateLinearGradientBrush(0, 0, target_x, h, self.style.bar, self.style.bar_stop)
-        gc.SetBrush(bar_brush)
+        target_x = (w - border_width * 2) * self.value_anim.value
+        gc.SetBrush(self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h)))
         if target_x <= self.style.corner_radius * 2:
-            gc.DrawRoundedRectangle(1, 1, self.style.corner_radius * 2, h - 2, self.style.corner_radius)
+            gc.DrawRoundedRectangle(border_width, border_width, self.style.corner_radius * 2, h - 2,
+                                    self.style.corner_radius)
         else:
-            gc.DrawRoundedRectangle(1, 1, target_x, h - 2, self.style.corner_radius)
+            gc.DrawRoundedRectangle(border_width, border_width, target_x, h - border_width * 2,
+                                    self.style.corner_radius)
 
     def update_animation(self):
         self.value_anim.set_range(self.value_anim.value, self.value / self.range)

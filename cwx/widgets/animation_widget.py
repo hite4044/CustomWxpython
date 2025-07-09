@@ -1,9 +1,9 @@
 import wx
 
-from cwx.animation import Animation, AnimationGroup
-from cwx.style import WidgetStyle
-from cwx.widgets.base_widget import Widget
 from lib.perf import Counter
+from ..animation import Animation, AnimationGroup
+from ..style import WidgetStyle
+from ..widgets.base_widget import Widget
 
 cwxEVT_ANIMATION_OVER = wx.NewEventType()
 EVT_ANIMATION_OVER = wx.PyEventBinder(cwxEVT_ANIMATION_OVER, 1)
@@ -71,7 +71,10 @@ class AnimationWidget(Widget):
 
     def animation_call(self, _):
         timer = Counter(create_start=True)
-        self.animation_callback()
+        try:
+            self.animation_callback()
+        except RuntimeError:
+            return
         for animation in self.in_playing[:]:
             if not animation.is_playing:
                 animation.stop()
@@ -81,7 +84,7 @@ class AnimationWidget(Widget):
             for animation in self.in_playing:
                 frame_time = min(frame_time, max(0, animation.get_next_frame_time(self.fps)))
             self.timer.StartOnce(int(frame_time * 1000))
-        print(f"Animation Frame Use: {timer.endT()}")
+        # print(f"Animation Frame Use: {timer.endT()}")
 
     def animation_callback(self):
         pass

@@ -3,7 +3,7 @@ from typing import cast as type_cast
 import wx
 
 from .base_widget import Widget
-from ..style import WidgetStyle
+from ..style.__init__ import WidgetStyle
 
 
 class StaticText(Widget):

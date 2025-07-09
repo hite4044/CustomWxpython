@@ -1,6 +1,6 @@
 from .animation import AnimationGroup
 from .font import ft
-from .style import *
+from cwx.style.__init__ import *
 from .widgets.animation_widget import *
 from .widgets.base_widget import *
 from .widgets.button import *
@@ -39,5 +39,6 @@ __all__ = [
     "ButtonEvent",
 
     # Other
-    "ft"
+    "ft",
+    "SCALE"
 ]

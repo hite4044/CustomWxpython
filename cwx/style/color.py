@@ -1,11 +1,10 @@
 import ctypes
-from copy import deepcopy
 from ctypes import wintypes
-from dataclasses import dataclass
-from typing import TypeVar
 
 import colour
 import wx
+
+from ..dpi import SCALE
 
 dwmapi = ctypes.WinDLL('dwmapi.dll')
 
@@ -28,7 +27,7 @@ def get_windows_theme_color():
         b = (cr_colorization.value >> 0) % 256
         return r, g, b
     else:
-        return 0, 111, 196  # 如果获取颜色失败，返回 None
+        return 0, 111, 196  # 如果获取颜色失败, 返回默认颜色
 
 
 class LuminanceColor:
@@ -141,6 +140,10 @@ class ColorTransformer:
         return ColorTransformer.add_luminance(color, -COLOR_LEVEL * 3)
 
 
+class CT(ColorTransformer):
+    pass
+
+
 class DefaultColors:
     def __init__(self):
         self.PRIMARY = wx.Colour(get_windows_theme_color())
@@ -176,161 +179,82 @@ class Colors:
         )
 
 
-class Style:
-    def __init__(self):
-        self.colors = Colors.default()
+class GradientColor(wx.Colour):
+    def __init__(self,
+                 color: tuple[int, int, int] | wx.Colour,
+                 stop_color: tuple[int, int, int] | wx.Colour = None,
+                 gradient_type: int = wx.GRADIENT_LINEAR,
+                 direction: int = wx.HORIZONTAL,
+                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None):
+        super().__init__(color)
+        stop_color = stop_color if stop_color else color
+        self.stop_color = stop_color
+        self.gradient_type = gradient_type
+        self.direction = direction
+        self.stops = stops
 
-        self.default_style = EmptyStyle.load(self)
-        self.btn_style = BtnStyle.load(self)
-        self.textctrl_style = TextCtrlStyle.load(self)
-        self.static_line_style = StaticLineStyle.load(self)
-        self.progress_bar_style = ProgressBarStyle.load(self)
+        self.gradient_stops = wx.GraphicsGradientStops(color, stop_color)
+        if stops:
+            for stop in stops:
+                self.gradient_stops.Add(wx.Colour(stop), stops[stop])
+
+    def create_brush(self, gc: wx.GraphicsContext,
+                     xy1: tuple[float, float], xy2: tuple[float, float] = None,
+                     radius: float = 100):
+        if self.gradient_type == wx.GRADIENT_LINEAR:
+            if xy2 is None:
+                if self.direction == wx.VERTICAL:
+                    xy1, xy2 = (0, 0), (0, xy1[1])
+                elif self.direction == wx.HORIZONTAL:
+                    xy1, xy2 = (0, 0), (xy1[0], 0)
+            return gc.CreateLinearGradientBrush(xy1[0], xy1[1], xy2[0], xy2[1], self.gradient_stops)
+        elif self.gradient_type == wx.GRADIENT_RADIAL:
+            return gc.CreateRadialGradientBrush(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.gradient_stops)
+        return gc.CreateBrush(wx.Brush(self))
+
+    def create_pen(self, gc: wx.GraphicsContext,
+                   xy1: tuple[float, float], xy2: tuple[float, float] = None,
+                   width: float = 1, style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+        pen = wx.GraphicsPenInfo(self, width * SCALE, style)
+        if self.gradient_type == wx.GRADIENT_LINEAR:
+            if xy2 is None:
+                if self.direction == wx.VERTICAL:
+                    xy1, xy2 = (0, 0), (0, xy1[1])
+                elif self.direction == wx.HORIZONTAL:
+                    xy1, xy2 = (0, 0), (xy1[0], 0)
+
+            last_color = self
+            if self.stops:
+                for percent, color in self.stops.items():
+                    t1 = xy1[0] + (xy2[0] - xy1[0]) * percent
+                    t2 = xy1[1] + (xy2[1] - xy1[1]) * percent
+                    pen = pen.LinearGradient(xy1[0], xy1[1], t1, t2, last_color, color)
+                    last_color = color
+            if self.stop_color:
+                pen = pen.LinearGradient(xy1[0], xy1[1], xy2[0], xy2[1], last_color, self.stop_color)
+        elif self.gradient_type == wx.GRADIENT_RADIAL:
+            pen = pen.RadialGradient(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.stops)
+        return gc.CreatePen(pen)
 
 
-class WidgetStyle:
-    def __init__(self, fg: wx.Colour = wx.WHITE, bg: wx.Colour = wx.BLACK):
-        self.fg = fg
-        self.bg = bg
+class GradientPen(GradientColor):
+    def __init__(self,
+                 color: tuple[int, int, int] | wx.Colour,
+                 stop_color: tuple[int, int, int] | wx.Colour = None,
+                 gradient_type: int = wx.GRADIENT_LINEAR,
+                 direction: int = wx.HORIZONTAL,
+                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None,
+                 width: float = 1, pen_style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+        super().__init__(color, stop_color, gradient_type, direction, stops)
+        self.width = width
+        self.pen_style = pen_style
+        self.radius = radius
 
-    @staticmethod
-    def load(style: Style) -> 'WidgetStyle':
-        return WidgetStyle(
-            style.colors.fg,
-            style.colors.bg
-        )
+    def create_pen(self, gc: wx.GraphicsContext,
+                   xy1: tuple[float, float], xy2: tuple[float, float] = None,
+                   *args):
+        return super().create_pen(gc, xy1, xy2, self.width, self.pen_style, self.radius)
 
 
-class EmptyStyle(WidgetStyle):
+class GradientBrush(GradientColor):
     pass
-
-
-@dataclass
-class BorderStyle:
-    color: TransformableColor
-    corner_radius: float
-    width: float
-    style: int
-
-
-class BtnStyle(WidgetStyle):
-    fg: TransformableColor
-    bg: TransformableColor
-
-    def __init__(self,
-                 fg: TransformableColor,
-                 bg: TransformableColor,
-                 border_color: wx.Colour,
-                 corner_radius: float,
-                 border_width: float,
-                 border_style: int,
-                 ):
-        """
-        :param fg: 按钮文字颜色
-        :param bg: 按钮背景
-        :param border_color: 边框颜色
-        :param corner_radius: 边框圆角半径
-        :param border_width: 边框宽度
-        :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
-        """
-        super().__init__(fg, bg)
-        self.border_color = border_color
-        self.corner_radius = corner_radius
-        self.border_width = border_width
-        self.border_style = border_style
-
-    @staticmethod
-    def load(style: Style) -> 'BtnStyle':
-        colors = style.colors
-
-        return BtnStyle(
-            fg=TC(colors.fg),
-            bg=TC(ColorTransformer.light1(colors.primary)),
-            border_color=ColorTransformer.with_alpha(colors.primary, 128),
-            corner_radius=6,
-            border_width=2,
-            border_style=wx.PENSTYLE_SOLID
-        )
-
-
-class TextCtrlStyle(WidgetStyle):
-    def __init__(self,
-                 input_fg: wx.Colour,
-                 input_bg: wx.Colour,
-                 border: wx.Colour,
-                 active_border: wx.Colour,
-                 cursor: wx.Colour,
-                 select_fg: wx.Colour,
-                 select_bg: wx.Colour,
-
-                 corner_radius: float,
-                 select_corder_radius: float,
-                 border_width: float,
-                 active_border_width: float,
-                 border_style: int):
-        super().__init__(input_fg, input_bg)
-        self.border = border
-        self.active_border = active_border
-        self.cursor = cursor
-        self.select_fg = select_fg
-        self.select_bg = select_bg
-
-        self.corner_radius = corner_radius
-        self.select_corder_radius = select_corder_radius
-        self.border_width = border_width
-        self.active_border_width = active_border_width
-        self.border_style = border_style
-
-    @staticmethod
-    def load(style: Style) -> 'TextCtrlStyle':
-        colors = style.colors
-
-        return TextCtrlStyle(
-            input_fg=colors.input_fg,
-            input_bg=colors.input_bg,
-            border=colors.border,
-            active_border=colors.primary,
-            cursor=colors.input_fg,
-            select_fg=colors.input_fg,
-            select_bg=colors.primary,
-
-            corner_radius=4,
-            select_corder_radius=5,
-            border_width=1,
-            active_border_width=2,
-            border_style=wx.PENSTYLE_SOLID
-        )
-
-
-class StaticLineStyle(WidgetStyle):
-    @staticmethod
-    def load(style: Style) -> 'StaticLineStyle':
-        return StaticLineStyle(
-            bg=style.colors.border,
-        )
-
-class ProgressBarStyle(WidgetStyle):
-    def __init__(self,
-                 bg: wx.Colour, bar: wx.Colour, bar_stop: wx.Colour,
-                 border: wx.Colour, corner_radius: float):
-        super().__init__(
-            bg=bg,
-        )
-        self.corner_radius = corner_radius
-        self.bar = bar
-        self.bar_stop = bar_stop
-        self.border = border
-
-
-    @staticmethod
-    def load(style: Style) -> 'ProgressBarStyle':
-        return ProgressBarStyle(
-            bg=ColorTransformer.with_alpha(style.colors.bg, 40),
-            bar=ColorTransformer.dark1(style.colors.primary),
-            bar_stop=ColorTransformer.light1(style.colors.primary),
-            border=style.colors.border,
-            corner_radius=5
-        )
-
-
-app = wx.App()
-print(get_windows_theme_color())

@@ -4,7 +4,9 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from ..animation import KeyFrameWay, EZKeyFrameAnimation
+from .. import AnimationGroup, ColorGradationAnimation
+from ..animation import KeyFrameWay, EZKeyFrameAnimation, full_keyframe
+from ..dpi import SCALE
 from ..style import Style, TextCtrlStyle
 
 TC_X_PAD = TC_Y_PAD = 6
@@ -22,21 +24,35 @@ class TextCtrl(AnimationWidget):
 
     def __init__(self, parent: wx.Window, text: str, widget_style: TextCtrlStyle = None):
         super().__init__(parent, widget_style=widget_style, fps=60)
-        self.text = text
-        self.cursor_char = 6
-        self.cursor_x = 1
-        self.select_start: int | None = 3
+        self.text = text  # 文本
+        self.cursor_char = 6  # 当前光标位置
+        self.select_start: int | None = 3  # 当前选择的文本的起始位置
         self.calc_size()
 
-        self.box_extent: tuple[int, int, int, int] | None = None
-        self.text_extents: list[float] | None = None
-        self.null_pen = wx.GraphicsPenInfo((0, 0, 0, 0), 0)
-        self.selecting = False  # 新增选中状态标志
-        self.last_mouse_pos = wx.Point()  # 记录最后鼠标位置
+        self.box_extent: tuple[int, int, int, int] | None = None  # 文本框外框
+        self.text_extents: list[float] | None = None  # 文本长度缓存
+        self.selecting = False  # 是否正在选择
+        self.last_mouse_pos = wx.Point()  # 最后鼠标位置
+
         self.cursor_pos_anim = EZKeyFrameAnimation(0.15, KeyFrameWay.QUADRATIC_EASE, -1, -1)
+        self.border_width = EZKeyFrameAnimation(0.15, KeyFrameWay.SMOOTH, self.style.border_width,
+                                                self.style.active_border_width)
+        self.border_tl_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_tl_border,
+                                                       full_keyframe(KeyFrameWay.SMOOTH))
+        self.border_br_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_br_border,
+                                                       full_keyframe(KeyFrameWay.SMOOTH))
+        self.border_anim = AnimationGroup({
+            "width": self.border_width,
+            "tl_color": self.border_tl_color,
+            "br_color": self.border_br_color
+        })
         self.reg_animation("cursor", self.cursor_pos_anim)
+        self.reg_animation_group("border", self.border_anim)
+
         self.Bind(wx.EVT_CHAR, self.on_key)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_event)
+        self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
+        self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
 
     def SetFont(self, font: wx.Font):
         super().SetFont(font)
@@ -56,10 +72,12 @@ class TextCtrl(AnimationWidget):
         self.bg_brush = wx.Brush(style.bg)
         self.select_text_color = style.select_fg
         self.select_bg_brush = wx.Brush(style.select_bg)
-        self.cursor_pen = wx.GraphicsPenInfo(style.cursor)
+        self.cursor_pen = wx.GraphicsPenInfo(style.cursor, SCALE)
         self.border_pen = wx.GraphicsPenInfo(style.border, style.border_width, style.border_style)
-        self.active_border_pen = wx.GraphicsPenInfo(style.active_border, style.active_border_width,
-                                                    style.border_style)
+        if not hasattr(self, "init_style"):
+            self.border_width.set_range(style.border_width, style.active_border_width)
+            self.border_tl_color.set_color(style.border, style.active_tl_border)
+            self.border_br_color.set_color(style.border, style.active_br_border)
 
     def SetValue(self, text: str):
         self.text = text
@@ -67,6 +85,16 @@ class TextCtrl(AnimationWidget):
         self.Refresh()
 
     # 内部方法
+
+    def OnFocus(self, event: wx.FocusEvent):
+        event.Skip()
+        self.border_anim.set_invent(False)
+        self.play_animation("border")
+
+    def OnKillFocus(self, event: wx.FocusEvent):
+        event.Skip()
+        self.border_anim.set_invent(True)
+        self.play_animation("border")
 
     def update_cursor_pos_target(self, cursor_char: int = None):
         if self.cursor_char == cursor_char and cursor_char is not None:
@@ -112,8 +140,10 @@ class TextCtrl(AnimationWidget):
                 self.InsertValue(self.cursor_char, char)
         elif event.KeyCode == wx.WXK_LEFT and self.cursor_char > 0:
             self.cursor_char -= 1
+            self.select_start = None
         elif event.KeyCode == wx.WXK_RIGHT and self.cursor_char < len(self.text):
             self.cursor_char += 1
+            self.select_start = None
         elif event.KeyCode == wx.WXK_BACK and self.cursor_char > 0:
             # 处理退格键
             if self.select_start is not None and self.select_start != self.cursor_char:
@@ -236,8 +266,8 @@ class TextCtrl(AnimationWidget):
         w, h = type_cast(tuple, dc.GetTextExtent(self.text))
         pad_x = TC_X_PAD * 2
         pad_y = TC_Y_PAD * 2
-        self.SetSize((w + pad_x, h + pad_y))
-        self.SetMinSize((w + pad_x, h + pad_y))
+        self.RawSetSize((w + pad_x, h + pad_y))
+        self.RawSetMinSize((w + pad_x, h + pad_y))
 
     def draw_content(self, gc: wx.GraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
@@ -251,10 +281,12 @@ class TextCtrl(AnimationWidget):
             self.load_text_extends(gc)
 
         # 绘制背景
+        border_width = self.border_width.value * SCALE
+        self.border_pen = wx.GraphicsPenInfo(self.style.border, border_width, self.style.border_style) \
+            .LinearGradient(0, 0, w, h, self.border_tl_color.value, self.border_br_color.value)
         gc.SetPen(gc.CreatePen(self.border_pen))
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
-        gc.DrawRoundedRectangle(0, 0, w - 1, h - 1, self.style.corner_radius)
-
+        gc.DrawRoundedRectangle(border_width, border_width, w - border_width *2, h - border_width*2, self.style.corner_radius)
         text_x = TC_X_PAD
         text_y = TC_Y_PAD
         if self.cursor_pos_anim.start == self.cursor_pos_anim.end == -1:

@@ -4,6 +4,7 @@ import wx
 
 from .animation_widget import AnimationWidget
 from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameWay, MutilKeyFrameAnimation, ColorGradationAnimation
+from ..dpi import SCALE
 from ..style import Style, BtnStyle
 
 cwxEVT_BUTTON = wx.NewEventType()
@@ -24,7 +25,7 @@ class Button(AnimationWidget):
     border_pen: wx.GraphicsPenInfo
 
     def __init__(self, parent: wx.Window, label: str, widget_style: BtnStyle = None):
-        super().__init__(parent, widget_style=widget_style, fps=30)
+        super().__init__(parent, widget_style=widget_style, fps=60)
         self.SetLabel(label)
         self.bg_anim = MutilKeyFrameAnimation \
             (0.2,
@@ -88,8 +89,9 @@ class Button(AnimationWidget):
         super().SetLabel(label)
         dc = wx.ClientDC(self)
         width, height = type_cast(tuple, dc.GetTextExtent(label))
-        self.SetSize((width + 40, height + 15))
-        self.SetMinSize((width + 40, height + 15))
+        size = (int(width + 40 * SCALE), int(height + 15 * SCALE))
+        self.RawSetSize(size)
+        self.RawSetMinSize(size)
 
     @staticmethod
     def translate_style(style: Style):
@@ -99,19 +101,19 @@ class Button(AnimationWidget):
         super().load_widget_style(style)
         self.bg_brush = wx.Brush(style.bg)
         self.text_color = style.fg
-        self.border_pen = wx.GraphicsPenInfo(style.border_color, style.border_width, style.border_style)
+        self.border_pen = wx.GraphicsPenInfo(style.border_color, style.border_width * SCALE, style.border_style)
 
     def draw_content(self, gc: wx.GraphicsContext):
-
         w, h = type_cast(tuple[int, int], self.GetSize())
 
         # 绘制背景
+        border_width = self.style.border_width * SCALE
+        self.border_pen = wx.GraphicsPenInfo(self.style.border_color, border_width, self.style.border_style)
         gc.SetPen(gc.CreatePen(self.border_pen))
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
-        gc.DrawRoundedRectangle(self.style.border_width - 1, self.style.border_width - 1,
-                                w - self.style.border_width, h - self.style.border_width,
+        gc.DrawRoundedRectangle(border_width / 2, border_width / 2,
+                                w - border_width, h - border_width,
                                 self.style.corner_radius)
-
         # 绘制文字
         gc.SetFont(gc.CreateFont(self.GetFont(), self.text_color))
         label = self.GetLabel()

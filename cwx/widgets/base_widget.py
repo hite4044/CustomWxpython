@@ -1,7 +1,7 @@
 import wx
 
-from cwx.dpi import translate_size
-from cwx.style import Style, WidgetStyle
+from ..dpi import translate_size
+from ..style import Style, WidgetStyle
 from lib.perf import Counter
 
 cwxEVT_STYLE_UPDATE = wx.NewEventType()
@@ -42,7 +42,9 @@ class Widget(wx.Window):
             self.style = widget_style
         else:
             self.style = WidgetStyle.load(self.gen_style)
+        setattr(self, "init_style", None)
         self.load_style(self.gen_style)
+        delattr(self, "init_style")
         self.Bind(wx.EVT_SIZE, self.on_size)
 
     def on_size(self, event: wx.SizeEvent):
@@ -58,6 +60,18 @@ class Widget(wx.Window):
 
     def SetMaxSize(self, size: tuple[int, int]):
         super().SetMaxSize(translate_size(size))
+
+    def CacheBestSize(self, size: tuple[int, int]):
+        super().CacheBestSize(translate_size(size))
+
+    def RawSetSize(self, size: tuple[int, int]):
+        super().SetSize(size)
+
+    def RawSetMinSize(self, size: tuple[int, int]):
+        super().SetMinSize(size)
+
+    def RawSetMaxSize(self, size: tuple[int, int]):
+        super().SetMaxSize(size)
 
     def load_style(self, style: Style):
         self.gen_style = style
@@ -85,7 +99,7 @@ class Widget(wx.Window):
 
         timer = Counter(create_start=True)
         self.draw_content(wx.GraphicsContext.Create(dc))
-        # print(f"{self.__class__.__name__}: {timer.endT()}")
+        #print(f"{self.__class__.__name__}: {timer.endT()}")
 
     def draw_content(self, gc: wx.GraphicsContext):
         pass

@@ -13,6 +13,7 @@ class Animation:
         self.during = during
         self.range = range_
         self.is_invent = False
+        self.has_start = False
         self.has_finish = False
 
         self.playing_start = -1
@@ -30,7 +31,7 @@ class Animation:
 
     @property
     def is_playing(self) -> bool:
-        return not self.has_finish
+        return self.playing_start != -1 and not self.has_finish
 
     @property
     def raw_percent(self):
@@ -176,6 +177,7 @@ class KeyFrameAnimation(Animation):
         self.percent_offset = 0
         super().stop()
 
+
 class EZKeyFrameAnimation(KeyFrameAnimation):
     def __init__(self, during: float, way: KeyFrameWay, start: float, end: float):
         super().__init__(during, [KeyFrame(way, 0, 0.0), KeyFrame(way, 1, 1.0)])
@@ -197,16 +199,18 @@ class ColorGradationAnimation(KeyFrameAnimation):
         self.color1 = color1
         self.color2 = color2
 
+    def set_color(self, color1: wx.Colour, color2: wx.Colour):
+        self.color1 = color1
+        self.color2 = color2
+
     @property
     def value(self) -> wx.Colour:
         percent = super().value
-        r_dif = self.color2.Red() - self.color1.Red()
-        g_dif = self.color2.Green() - self.color1.Green()
-        b_dif = self.color2.Blue() - self.color1.Blue()
-        new_rgba = (self.color1.Red() + r_dif * percent,
-                    self.color1.Green() + g_dif * percent,
-                    self.color1.Blue() + b_dif * percent,
-                    self.color1.Alpha())
+        new_rgba = (self.color1.Red() * (1 - percent) + self.color2.Red() * percent,
+                    self.color1.Green() * (1 - percent) + self.color2.Green() * percent,
+                    self.color1.Blue() * (1 - percent) + self.color2.Blue() * percent,
+                    self.color1.Alpha() * (1 - percent) + self.color2.Alpha() * percent)
+        new_rgba = tuple(int(x) for x in new_rgba)
         return wx.Colour(new_rgba)
 
 
@@ -260,10 +264,6 @@ class AnimationGroup(Animation):
             animation.stop()
         super().stop()
 
-    @property
-    def is_invent(self):
-        raise NotImplementedError()
-
     def set_invent(self, invent: bool):
         for animation in self.animations.values():
             animation.is_invent = invent
@@ -276,3 +276,10 @@ class AnimationGroup(Animation):
     @property
     def value(self) -> object:
         raise NotImplementedError
+
+
+def full_keyframe(way: KeyFrameWay):
+    return [
+        KeyFrame(way, 0, 0.0),
+        KeyFrame(way, 1, 1.0)
+    ]
