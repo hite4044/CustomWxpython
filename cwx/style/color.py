@@ -61,6 +61,7 @@ class EasyColor(colour.Color):
 
 
 class TransformableColor(wx.Colour):
+    """一个颜色类, 定义一个可以快捷调节的颜色"""
     color: EasyColor
 
     def __init__(self, color: tuple[int, int, int] | tuple[int, int, int, int] | wx.Colour):
@@ -92,7 +93,7 @@ class TransformableColor(wx.Colour):
 
 
 class TC(TransformableColor):
-    """TransformableColor的简写"""
+    """可变换颜色(TransformableColor) 的简写"""
     pass
 
 
@@ -141,6 +142,7 @@ class ColorTransformer:
 
 
 class CT(ColorTransformer):
+    """颜色转换器(ColorTransformer)的简写"""
     pass
 
 
@@ -180,6 +182,10 @@ class Colors:
 
 
 class GradientColor(wx.Colour):
+    """
+    高度自定义的颜色, 支持多种渐变设定
+    """
+
     def __init__(self,
                  color: tuple[int, int, int] | wx.Colour,
                  stop_color: tuple[int, int, int] | wx.Colour = None,
@@ -187,7 +193,6 @@ class GradientColor(wx.Colour):
                  direction: int = wx.HORIZONTAL,
                  stops: dict[float, tuple[int, int, int] | wx.Colour] = None):
         super().__init__(color)
-        stop_color = stop_color if stop_color else color
         self.stop_color = stop_color
         self.gradient_type = gradient_type
         self.direction = direction
@@ -198,9 +203,70 @@ class GradientColor(wx.Colour):
             for stop in stops:
                 self.gradient_stops.Add(wx.Colour(stop), stops[stop])
 
-    def create_brush(self, gc: wx.GraphicsContext,
+
+class GradientPen(GradientColor):
+    """
+    为GradientColor提供笔(Pen)的预定义配置
+    """
+
+    def __init__(self,
+                 color: tuple[int, int, int] | wx.Colour,  # 主颜色
+                 stop_color: tuple[int, int, int] | wx.Colour = None,  # 渐变停止颜色
+                 gradient_type: int = wx.GRADIENT_LINEAR,  # 渐变类型
+                 direction: int = wx.HORIZONTAL,  # 渐变方向
+                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None,  # 渐变途径点
+                 width: float = 1, pen_style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+        super().__init__(color, stop_color, gradient_type, direction, stops)
+        self.width = width
+        self.pen_style = pen_style
+        self.radius = radius
+
+    def create_pen(self, gc: wx.GraphicsContext,
+                   xy1: tuple[float, float], xy2: tuple[float, float] = None):
+        return self.create_pen_raw(gc, xy1, xy2, self.width, self.pen_style, self.radius)
+
+    def create_pen_raw(self, gc: wx.GraphicsContext,
+                       xy1: tuple[float, float], xy2: tuple[float, float] = None,
+                       width: float = 1, style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+        """
+        只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
+        当设置了xy2时, 按照xy1 -> xy2的方向渐变
+        如果设置了渐变途径点 (self.stops), 那么按照 xy1 -> xy2的方向设置渐变
+        """
+        pen = wx.GraphicsPenInfo(self, width * SCALE, style)
+        if self.gradient_type == wx.GRADIENT_LINEAR:
+            if xy2 is None:  # 只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
+                if self.direction == wx.VERTICAL:
+                    xy1, xy2 = (0, 0), (0, xy1[1])
+                elif self.direction == wx.HORIZONTAL:
+                    xy1, xy2 = (0, 0), (xy1[0], 0)
+            last_color = self
+            if self.stops:  # 如果设置了渐变途径点 (self.stops), 那么按照 xy1 -> xy2的方向设置渐变
+                for percent, color in self.stops.items():
+                    t1 = xy1[0] + (xy2[0] - xy1[0]) * percent
+                    t2 = xy1[1] + (xy2[1] - xy1[1]) * percent
+                    pen = pen.LinearGradient(xy1[0], xy1[1], t1, t2, last_color, color)
+                    last_color = color
+            if self.stop_color:  # 设置了结束颜色
+                pen = pen.LinearGradient(xy1[0], xy1[1], xy2[0], xy2[1], last_color, self.stop_color)
+        elif self.gradient_type == wx.GRADIENT_RADIAL:  # 圆形渐变
+            pen = pen.RadialGradient(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.stops)
+        return gc.CreatePen(pen)
+
+
+class GradientBrush(GradientColor):
+    """
+    为GradientColor提供刷(Brush)的预定义配置
+    """
+
+    def create_brush(self,
+                     gc: wx.GraphicsContext,
                      xy1: tuple[float, float], xy2: tuple[float, float] = None,
                      radius: float = 100):
+        """
+        只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
+        当设置了xy2时, 按照xy1 -> xy2的方向渐变
+        """
         if self.gradient_type == wx.GRADIENT_LINEAR:
             if xy2 is None:
                 if self.direction == wx.VERTICAL:
@@ -211,50 +277,3 @@ class GradientColor(wx.Colour):
         elif self.gradient_type == wx.GRADIENT_RADIAL:
             return gc.CreateRadialGradientBrush(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.gradient_stops)
         return gc.CreateBrush(wx.Brush(self))
-
-    def create_pen(self, gc: wx.GraphicsContext,
-                   xy1: tuple[float, float], xy2: tuple[float, float] = None,
-                   width: float = 1, style: int = wx.PENSTYLE_SOLID, radius: float = 100):
-        pen = wx.GraphicsPenInfo(self, width * SCALE, style)
-        if self.gradient_type == wx.GRADIENT_LINEAR:
-            if xy2 is None:
-                if self.direction == wx.VERTICAL:
-                    xy1, xy2 = (0, 0), (0, xy1[1])
-                elif self.direction == wx.HORIZONTAL:
-                    xy1, xy2 = (0, 0), (xy1[0], 0)
-
-            last_color = self
-            if self.stops:
-                for percent, color in self.stops.items():
-                    t1 = xy1[0] + (xy2[0] - xy1[0]) * percent
-                    t2 = xy1[1] + (xy2[1] - xy1[1]) * percent
-                    pen = pen.LinearGradient(xy1[0], xy1[1], t1, t2, last_color, color)
-                    last_color = color
-            if self.stop_color:
-                pen = pen.LinearGradient(xy1[0], xy1[1], xy2[0], xy2[1], last_color, self.stop_color)
-        elif self.gradient_type == wx.GRADIENT_RADIAL:
-            pen = pen.RadialGradient(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.stops)
-        return gc.CreatePen(pen)
-
-
-class GradientPen(GradientColor):
-    def __init__(self,
-                 color: tuple[int, int, int] | wx.Colour,
-                 stop_color: tuple[int, int, int] | wx.Colour = None,
-                 gradient_type: int = wx.GRADIENT_LINEAR,
-                 direction: int = wx.HORIZONTAL,
-                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None,
-                 width: float = 1, pen_style: int = wx.PENSTYLE_SOLID, radius: float = 100):
-        super().__init__(color, stop_color, gradient_type, direction, stops)
-        self.width = width
-        self.pen_style = pen_style
-        self.radius = radius
-
-    def create_pen(self, gc: wx.GraphicsContext,
-                   xy1: tuple[float, float], xy2: tuple[float, float] = None,
-                   *args):
-        return super().create_pen(gc, xy1, xy2, self.width, self.pen_style, self.radius)
-
-
-class GradientBrush(GradientColor):
-    pass

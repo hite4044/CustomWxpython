@@ -40,5 +40,6 @@ __all__ = [
 
     # Other
     "ft",
-    "SCALE"
+    "SCALE",
+    "GraphicsContext"
 ]

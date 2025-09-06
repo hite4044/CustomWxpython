@@ -1,23 +1,28 @@
 from time import perf_counter
 
+from cwx.blur import blur_window
 from cwx.font import ft
 
 timer = perf_counter()
 import wx
 import pywinstyles
 import cwx
+import faulthandler
+faulthandler.enable()
 
 
 class Frame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, -1, "Custom Wxpython", size=(700, 500))
+        super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
         self.SetFont(ft(12))
-        pywinstyles.apply_style(self, "acrylic")
-        self.SetBackgroundColour(wx.Colour(0, 0, 0))
+        blur_window(self)
+        self.SetBackgroundColour(wx.BLACK)
+        # pywinstyles.apply_style(self, "acrylic")
+        # self.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(cwx.StaticText(self, "666"), 1)
+        sizer.Add(cwx.StaticText(self, "Joy Never"))
 
         sizer.Add(cwx.Button(self, "点我啊!"), 0)
 
@@ -45,12 +50,13 @@ class Frame(wx.Frame):
         sizer.Add(cwx.StaticLine(self), 0, wx.EXPAND)
 
         sizer.AddStretchSpacer()
+
         self.SetSizer(sizer)
 
 
 app = wx.App()
-print("GUI Init Time:", round((perf_counter() - timer) * 100, 2), "ms")
 frame = Frame()
+print("GUI Init Time:", round((perf_counter() - timer) * 100, 2), "ms")
 frame.Show()
 
 app.MainLoop()

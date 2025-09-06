@@ -42,22 +42,27 @@ class ProgressBar(AnimationWidget):
     def draw_content(self, gc: wx.GraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetClientSize())
         border_width = self.style.border.width * SCALE
+        TRANSPARENT_PEN = gc.CreatePen(wx.GraphicsPenInfo(wx.BLACK, border_width, wx.PENSTYLE_TRANSPARENT))
+        TRANSPARENT_BRUSH = gc.CreateBrush(wx.Brush(wx.BLACK, 0, wx.BRUSHSTYLE_TRANSPARENT))
 
         # 背景
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
         gc.SetPen(self.style.border.create_pen(gc, (w, h)))
-        gc.DrawRoundedRectangle(border_width, border_width, w - border_width*2, h - border_width*2,
+        gc.DrawRoundedRectangle(border_width - 1, border_width - 1,
+                                w - (border_width - 1) * 2, h - (border_width - 1) * 2,
                                 self.style.corner_radius)
 
         # 进度条
-        gc.SetPen(gc.CreatePen(wx.Pen(wx.RED, 0, wx.PENSTYLE_TRANSPARENT)))
+        gc.SetPen(TRANSPARENT_PEN)
         target_x = (w - border_width * 2) * self.value_anim.value
         gc.SetBrush(self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h)))
         if target_x <= self.style.corner_radius * 2:
-            gc.DrawRoundedRectangle(border_width, border_width, self.style.corner_radius * 2, h - 2,
+            gc.DrawRoundedRectangle(border_width, border_width,
+                                    self.style.corner_radius * 2, h - 2,
                                     self.style.corner_radius)
         else:
-            gc.DrawRoundedRectangle(border_width, border_width, target_x, h - border_width * 2,
+            gc.DrawRoundedRectangle(border_width, border_width,
+                                    target_x, h - border_width * 2,
                                     self.style.corner_radius)
 
     def update_animation(self):

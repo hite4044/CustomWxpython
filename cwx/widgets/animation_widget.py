@@ -23,7 +23,7 @@ class AnimationWidget(Widget):
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 1):
         super().__init__(parent, style, widget_style)
         self.fps = fps
-        self.allow_mutil_anim: bool = True
+        self.allow_multi_anim: bool = True
         self.animations: dict[str, Animation | AnimationGroup] = {}
         self.in_playing: list[Animation | AnimationGroup] = []
 
@@ -46,7 +46,7 @@ class AnimationWidget(Widget):
         else:
             raise RuntimeError(f"PlayAnimationError, There is no animation (group) named: {name}")
         anim.play()
-        if not self.allow_mutil_anim and self.in_playing:
+        if not self.allow_multi_anim and self.in_playing:
             for animation in self.in_playing:
                 if animation is not anim:
                     animation.stop()

@@ -1,8 +1,10 @@
+import typing
+
 import wx
 
 from ..dpi import translate_size
+from ..render import GraphicsContextWarper
 from ..style import Style, WidgetStyle
-from lib.perf import Counter
 
 cwxEVT_STYLE_UPDATE = wx.NewEventType()
 EVT_STYLE_UPDATE = wx.PyEventBinder(cwxEVT_STYLE_UPDATE, 1)
@@ -29,7 +31,7 @@ class Widget(wx.Window):
     style: WidgetStyle
 
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
-        super().__init__(parent, style=wx.TRANSPARENT_WINDOW | style)
+        super().__init__(parent, style=style)
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.SetBackgroundColour(wx.BLACK)
         self.SetDoubleBuffered(True)
@@ -49,8 +51,7 @@ class Widget(wx.Window):
 
     def on_size(self, event: wx.SizeEvent):
         event.Skip()
-        if event.GetSize() != self.GetSize():
-            self.Refresh()
+        self.Refresh()
 
     def SetSize(self, size: tuple[int, int]):
         super().SetSize(translate_size(size))
@@ -97,9 +98,11 @@ class Widget(wx.Window):
     def on_paint(self, _):
         dc = wx.PaintDC(self)
 
-        timer = Counter(create_start=True)
-        self.draw_content(wx.GraphicsContext.Create(dc))
-        #print(f"{self.__class__.__name__}: {timer.endT()}")
+        # timer = Counter(create_start=True)
+        gc = wx.GraphicsContext.Create(dc)
+        gc = typing.cast(wx.GraphicsContext, GraphicsContextWarper(gc))
+        self.draw_content(gc)
+        # print(f"{self.__class__.__name__}: {timer.endT()}")
 
     def draw_content(self, gc: wx.GraphicsContext):
         pass
