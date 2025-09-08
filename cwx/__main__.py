@@ -17,7 +17,7 @@ class Frame(wx.Frame):
         self.SetFont(ft(12))
         blur_window(self)
         self.SetBackgroundColour(wx.BLACK)
-        # pywinstyles.apply_style(self, "acrylic")
+        #pywinstyles.apply_style(self, "acrylic")
         # self.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -34,7 +34,7 @@ class Frame(wx.Frame):
 
         sizer.AddSpacer(5)
 
-        bar = cwx.ProgressBar(self, value=50)
+        bar = cwx.ProgressBar(self, value=5)
         bar.load_widget_style(bar.style.赛博朋克)
         def func1():
             bar.SetValue(30)
@@ -42,7 +42,7 @@ class Frame(wx.Frame):
         def func2():
             bar.SetValue(80)
             wx.CallLater(3000, func1)
-        wx.CallLater(1000, func1)
+        #wx.CallLater(1000, func1)
         sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 5)
 
         sizer.AddSpacer(5)

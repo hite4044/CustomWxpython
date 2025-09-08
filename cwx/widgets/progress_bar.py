@@ -1,3 +1,4 @@
+import math
 from typing import cast as type_cast
 
 import wx
@@ -6,6 +7,7 @@ from .animation_widget import AnimationWidget
 from .. import KeyFrameWay, SCALE
 from ..animation import EZKeyFrameAnimation
 from ..style import ProgressBarStyle, Style
+from ..render import GCRender, ARC
 
 
 class ProgressBar(AnimationWidget):
@@ -41,25 +43,32 @@ class ProgressBar(AnimationWidget):
 
     def draw_content(self, gc: wx.GraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetClientSize())
-        border_width = self.style.border.width * SCALE
+        border_width = round(self.style.border.width * SCALE)
         TRANSPARENT_PEN = gc.CreatePen(wx.GraphicsPenInfo(wx.BLACK, border_width, wx.PENSTYLE_TRANSPARENT))
-        TRANSPARENT_BRUSH = gc.CreateBrush(wx.Brush(wx.BLACK, 0, wx.BRUSHSTYLE_TRANSPARENT))
+        TRANSPARENT_BRUSH = gc.CreateBrush(wx.Brush(wx.BLACK, wx.BRUSHSTYLE_TRANSPARENT))
 
         # 背景
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
         gc.SetPen(self.style.border.create_pen(gc, (w, h)))
-        gc.DrawRoundedRectangle(border_width - 1, border_width - 1,
-                                w - (border_width - 1) * 2, h - (border_width - 1) * 2,
-                                self.style.corner_radius)
+        GCRender.RenderBorder(gc, border_width, self.style.corner_radius)
 
         # 进度条
         gc.SetPen(TRANSPARENT_PEN)
         target_x = (w - border_width * 2) * self.value_anim.value
         gc.SetBrush(self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h)))
         if target_x <= self.style.corner_radius * 2:
-            gc.DrawRoundedRectangle(border_width, border_width,
-                                    self.style.corner_radius * 2, h - 2,
-                                    self.style.corner_radius)
+            radius = self.style.corner_radius
+            path = gc.CreatePath()
+            fix_percent = max(0.0, math.cos((target_x + border_width) / radius))  # 由小渐快大
+            path.AddArc(target_x - radius / 2, h - (radius + border_width),
+                        radius, ARC(90 * (1 - fix_percent)), ARC(0), 0)
+            path.AddArc(target_x - radius / 2, radius + border_width,
+                        radius, ARC(0), ARC(270 + 90 * fix_percent), 0)
+            path.AddArc(border_width + radius, radius + border_width,
+                        radius, ARC(270 - 90 * fix_percent), ARC(180), 0)
+            path.AddArc(border_width + radius, h - (radius + border_width),
+                        radius, ARC(180), ARC(90 + 90 * fix_percent), 0)
+            gc.DrawPath(path)
         else:
             gc.DrawRoundedRectangle(border_width, border_width,
                                     target_x, h - border_width * 2,

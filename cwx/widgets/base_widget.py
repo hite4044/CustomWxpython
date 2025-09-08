@@ -3,6 +3,7 @@ import typing
 import wx
 
 from ..dpi import translate_size
+from ..event import PyCommandEvent
 from ..render import GraphicsContextWarper
 from ..style import Style, WidgetStyle
 
@@ -10,7 +11,7 @@ cwxEVT_STYLE_UPDATE = wx.NewEventType()
 EVT_STYLE_UPDATE = wx.PyEventBinder(cwxEVT_STYLE_UPDATE, 1)
 
 
-class StyleUpdateEvent(wx.PyCommandEvent):
+class StyleUpdateEvent(PyCommandEvent):
     def __init__(self, gen_style: Style):
         super().__init__(cwxEVT_STYLE_UPDATE, wx.ID_ANY)
         self.gen_style = gen_style
@@ -25,10 +26,10 @@ class StyleUpdateEvent(wx.PyCommandEvent):
 
 class Widget(wx.Window):
     """
-    CustomWxpython的基础控件类
+    CustomWxpython的基础控件类, 具有自动DPI缩放
     """
-    gen_style: Style
-    style: WidgetStyle
+    gen_style: Style  # 全局样式
+    style: WidgetStyle  # 组件自有样式
 
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
         super().__init__(parent, style=style)
@@ -75,24 +76,29 @@ class Widget(wx.Window):
         super().SetMaxSize(size)
 
     def load_style(self, style: Style):
+        """加载全局样式"""
         self.gen_style = style
         self.load_widget_style(self.translate_style(style))
 
     @staticmethod
     def translate_style(style: Style) -> WidgetStyle:
+        """转换全局样式为组件样式"""
         return style.default_style
 
     def on_style_update(self, event: StyleUpdateEvent):
+        """当组件接收到更新主题的信息时, 向该控件下所有支持update_style方法的子控件转发该消息"""
         self.update_style(event.gen_style)
         for child in self.GetChildren():
             if hasattr(child, "update_style") and hasattr(child.update_style, "__call__"):
                 child.update_style(event.gen_style)
 
     def update_style(self, gen_style: Style):
+        """更新当前组件的主题"""
         style = self.translate_style(gen_style)
         self.load_widget_style(style)
 
     def load_widget_style(self, style: WidgetStyle):
+        """加载组件主题"""
         self.style = style
 
     def on_paint(self, _):
