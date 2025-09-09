@@ -17,9 +17,14 @@ class AnimationOverEvent(wx.PyCommandEvent):
 
 class AnimationWidget(Widget):
     """
-    1. 重写animation_callback方法, 及其参数类型
-    """
+    具有自动动画管理的组件
+    如何实现:
+    1. 重写 `animation_callback` 方法, 该方法在每动画帧调用
 
+    A widget with auto animation manage.
+    How to implement:
+    1. Rewrite method `animation_callback`, this method will call in each animation frame.
+    """
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 1):
         super().__init__(parent, style, widget_style)
         self.fps = fps
@@ -33,14 +38,25 @@ class AnimationWidget(Widget):
         self.timer.Bind(wx.EVT_TIMER, self.animation_call)
 
     def reg_animation(self, name: str, animation: Animation):
+        """
+        注册一个动画
+        Register an animation.
+        """
         self.animations[name] = animation
         return animation
 
     def reg_animation_group(self, name: str, group: AnimationGroup):
-        self.animations[name] = group
-        return group
+        """
+        注册一个动画组, 也可把组当作普通动画注册
+        Register an animation group, same as `reg_animation`.
+        """
+        return self.reg_animation(name, group)
 
-    def play_animation(self, name: str, ):
+    def play_animation(self, name: str):
+        """
+        播放某个已注册动画
+        Play animation by name.
+        """
         if name in self.animations:
             anim = self.animations[name]
         else:
@@ -57,6 +73,10 @@ class AnimationWidget(Widget):
             self.timer.StartOnce()
 
     def stop_animation(self, name: str | Animation | AnimationGroup):
+        """
+        停止某个动画
+        Stop an animation.
+        """
         if not isinstance(name, str):
             anim = name
         elif name in self.animations:
@@ -70,7 +90,11 @@ class AnimationWidget(Widget):
             self.timer.Stop()
 
     def animation_call(self, _):
-        timer = Counter(create_start=True)
+        """
+        内部使用的函数, 请使用 `animation_callback`.
+        A method for internal use, please using `animation_callback`
+        """
+        # timer = Counter(create_start=True)
         try:
             self.animation_callback()
         except RuntimeError:
@@ -87,4 +111,8 @@ class AnimationWidget(Widget):
         # print(f"Animation Frame Use: {timer.endT()}")
 
     def animation_callback(self):
+        """
+        动画回调函数, 你应该在这里处理组件数据更新逻辑
+        Animation callback function, you should process widget update here.
+        """
         pass

@@ -26,9 +26,10 @@ class StyleUpdateEvent(PyCommandEvent):
 
 class Widget(wx.Window):
     """
-    CustomWxpython的基础控件类, 具有自动DPI缩放
+    CustomWxpython的基础控件类, 具有自动DPI缩放、主题管理
+    CustomWxpython's base widget class, with auto dpi scale, theme manage.
     """
-    gen_style: Style  # 全局样式
+    gen_style: Style  # 主题
     style: WidgetStyle  # 组件自有样式
 
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
@@ -45,7 +46,7 @@ class Widget(wx.Window):
             self.style = widget_style
         else:
             self.style = WidgetStyle.load(self.gen_style)
-        setattr(self, "init_style", None)
+        setattr(self, "init_style", True)
         self.load_style(self.gen_style)
         delattr(self, "init_style")
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -53,6 +54,9 @@ class Widget(wx.Window):
     def on_size(self, event: wx.SizeEvent):
         event.Skip()
         self.Refresh()
+
+    # 一些关于大小设置的DPI替换
+    # Some method hook about setting size.
 
     def SetSize(self, size: tuple[int, int]):
         super().SetSize(translate_size(size))
@@ -75,30 +79,40 @@ class Widget(wx.Window):
     def RawSetMaxSize(self, size: tuple[int, int]):
         super().SetMaxSize(size)
 
+    # 主题函数
+    # Method about theme.
+
     def load_style(self, style: Style):
-        """加载全局样式"""
+        """
+        转换主题为组件样式并加载, 用`init_style`属性的存在来判断是否正在初始化组件
+        Translate gen style into widget style and load it,
+         when `init_style` property is existed, it means it's initialing the theme on create widget.
+        """
         self.gen_style = style
         self.load_widget_style(self.translate_style(style))
 
     @staticmethod
     def translate_style(style: Style) -> WidgetStyle:
-        """转换全局样式为组件样式"""
+        """
+        转换主题为组件样式
+        Translate gen style to widget style.
+        """
         return style.default_style
 
     def on_style_update(self, event: StyleUpdateEvent):
-        """当组件接收到更新主题的信息时, 向该控件下所有支持update_style方法的子控件转发该消息"""
-        self.update_style(event.gen_style)
+        """
+        当组件接收到更新主题的信息时, 向该控件下所有支持update_style方法的子控件转发该消息
+        """
+        self.load_style(event.gen_style)
         for child in self.GetChildren():
             if hasattr(child, "update_style") and hasattr(child.update_style, "__call__"):
                 child.update_style(event.gen_style)
 
-    def update_style(self, gen_style: Style):
-        """更新当前组件的主题"""
-        style = self.translate_style(gen_style)
-        self.load_widget_style(style)
-
     def load_widget_style(self, style: WidgetStyle):
-        """加载组件主题"""
+        """
+        加载组件样式, 在这实现组件样式加载
+        Load widget style, implemented widget style load here.
+        """
         self.style = style
 
     def on_paint(self, _):

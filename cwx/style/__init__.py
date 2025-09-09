@@ -16,12 +16,20 @@ class Style:
 
 
 class WidgetStyle:
+    """
+    用于记录组件绘制的颜色、边框等信息
+    Including information about widget's drawing, such as color, border
+    """
     def __init__(self, fg: wx.Colour = wx.WHITE, bg: wx.Colour = wx.BLACK):
         self.fg = fg
         self.bg = bg
 
     @staticmethod
     def load(style: Style) -> 'WidgetStyle':
+        """
+        负责将主题转化为组件样式
+        Translate gen style into widget style.
+        """
         return WidgetStyle(
             style.colors.fg,
             style.colors.bg

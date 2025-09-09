@@ -17,12 +17,12 @@ class Frame(wx.Frame):
         self.SetFont(ft(12))
         blur_window(self)
         self.SetBackgroundColour(wx.BLACK)
-        #pywinstyles.apply_style(self, "acrylic")
+        # pywinstyles.apply_style(self, "acrylic")
         # self.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(cwx.StaticText(self, "Joy Never"))
+        sizer.Add(cwx.StaticText(self, "hite404"))
 
         sizer.Add(cwx.Button(self, "点我啊!"), 0)
 
