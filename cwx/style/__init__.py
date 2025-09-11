@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from ..dpi import SCALE
 from .color import *
 
 

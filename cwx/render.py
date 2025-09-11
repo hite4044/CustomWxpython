@@ -4,7 +4,7 @@ import typing
 import wx
 from PIL import ImageFont, Image, ImageDraw
 
-from lib.perf import Counter
+from .lib.perf import Counter
 from .tool.image_pil2wx import PilImg2WxImg
 
 rendered_texts: dict[str, tuple[wx.GraphicsBitmap, tuple[int, int]]] = {}
@@ -69,7 +69,10 @@ def ARC(angle: float):
 class GCRender:
     @staticmethod
     def RenderBorder(gc: wx.GraphicsContext, border_width: float, corner_radius: float):
-        """渲染一个紧密贴合控件外部的边框"""
+        """
+        渲染一个紧密贴合控件外部的边框
+        Render a perfect border
+        """
         w, h = gc.GetSize()
         path = gc.CreatePath()
         offset = get_offset(border_width)

@@ -1,6 +1,5 @@
 import wx
 
-from lib.perf import Counter
 from ..animation import Animation, AnimationGroup
 from ..style import WidgetStyle
 from ..widgets.base_widget import Widget

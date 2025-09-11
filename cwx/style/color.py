@@ -1,21 +1,23 @@
 import ctypes
 from ctypes import wintypes
+from enum import Enum
 
 import colour
 import wx
 
 from ..dpi import SCALE
+from ..lib.delay_init import DelayInitWrapper
 
 dwmapi = ctypes.WinDLL('dwmapi.dll')
 
+HRESULT = wintypes.LONG
 
-def get_windows_theme_color():
-    HRESULT = wintypes.LONG
+DwmGetColorizationColor = dwmapi.DwmGetColorizationColor
+DwmGetColorizationColor.argtypes = [ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.BOOL)]
+DwmGetColorizationColor.restype = HRESULT
 
-    DwmGetColorizationColor = dwmapi.DwmGetColorizationColor
-    DwmGetColorizationColor.argtypes = [ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.BOOL)]
-    DwmGetColorizationColor.restype = HRESULT
 
+def get_windows_theme_color():  # 蓝色
     cr_colorization = wintypes.DWORD()
     f_opaque_blend = wintypes.BOOL()
 
@@ -27,7 +29,7 @@ def get_windows_theme_color():
         b = (cr_colorization.value >> 0) % 256
         return r, g, b
     else:
-        return 0, 111, 196  # 如果获取颜色失败, 返回默认颜色
+        return 0, 111, 196  # 如果获取颜色失败, 返回默认颜色 (蓝色)
 
 
 class LuminanceColor:
@@ -147,8 +149,16 @@ class CT(ColorTransformer):
 
 
 class DefaultColors:
+    """
+    系统默认颜色, 需要在wx.App初始化后使用
+    System default color, need initial wx.App instance before use.
+    """
+
     def __init__(self):
         self.PRIMARY = wx.Colour(get_windows_theme_color())
+
+
+TheDefaultColors: DefaultColors = DelayInitWrapper(DefaultColors)
 
 
 class Colors:
@@ -171,7 +181,7 @@ class Colors:
     @staticmethod
     def default():
         return Colors(
-            primary=DefaultColors().PRIMARY,
+            primary=TheDefaultColors.PRIMARY,
             secondary=wx.Colour(85, 85, 85, 128),
             fg=wx.Colour(255, 255, 255),
             bg=wx.BLACK,
@@ -181,99 +191,236 @@ class Colors:
         )
 
 
+class Direction(Enum):
+    HORIZONTAL = 4
+    VERTICAL = 8
+    TOP_LEFT_CORNER = 12  # 从左上角开始 (到右下角) \ 渐变至左上角
+    TOP_RIGHT_CORNER = 16  # 从右上角开始 (到左下角) \ 渐变至右上角
+
+    # 用于圆形渐变
+    BOTTOM_LEFT_CORNER = 20  # 渐变至左下角
+    BOTTOM_RIGHT_CORNER = 24  # 渐变至右下角
+    AS_MAX_SIDE = 24  # 标志使用最远的一条边
+
+
 class GradientColor(wx.Colour):
     """
     高度自定义的颜色, 支持多种渐变设定
     """
 
     def __init__(self,
-                 color: tuple[int, int, int] | wx.Colour,
-                 stop_color: tuple[int, int, int] | wx.Colour = None,
-                 gradient_type: int = wx.GRADIENT_LINEAR,
-                 direction: int = wx.HORIZONTAL,
-                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None):
+                 color: tuple[int, ...] | wx.Colour,
+                 stop_color: tuple[int, ...] | wx.Colour = None,
+                 gradient_type: wx.GradientType = wx.GRADIENT_NONE,
+                 direction: Direction | int = Direction.HORIZONTAL,
+                 stops: list[tuple[float, tuple[int, int, int] | wx.Colour]] = None):
         super().__init__(color)
-        self.stop_color = stop_color
         self.gradient_type = gradient_type
-        self.direction = direction
-        self.stops = stops
+        self.direction: Direction | int = direction
 
         self.gradient_stops = wx.GraphicsGradientStops(color, stop_color)
-        if stops:
-            for stop in stops:
-                self.gradient_stops.Add(wx.Colour(stop), stops[stop])
+        for percent, stop_color in (stops if stops else []):
+            self.gradient_stops.Add(wx.Colour(stop_color), percent)
+
+    @property
+    def color(self) -> wx.Colour:
+        return self
+
+    @color.setter
+    def color(self, color: wx.Colour):
+        self.SetRGBA(color.GetRGBA())
+
+    @property
+    def stop_color(self) -> wx.Colour:
+        return self.gradient_stops.GetEndColour()
+
+    @stop_color.setter
+    def stop_color(self, color: wx.Colour):
+        self.gradient_stops.SetEndColour(color)
+
+    def update_start_color(self):
+        self.gradient_stops.SetStartColour(self)
+
+    def Set(self, *args, **kw):
+        super().Set(*args, **kw)
+        self.update_start_color()
+
+    def SetRGB(self, colRGB):
+        super().SetRGB(colRGB)
+        self.update_start_color()
+
+    def SetRGBA(self, colRGBA):
+        super().SetRGBA(colRGBA)
+        self.update_start_color()
 
 
 class GradientPen(GradientColor):
-    """
-    为GradientColor提供笔(Pen)的预定义配置
-    """
+    ANGLE_CALC_RADIUS = 100
 
     def __init__(self,
-                 color: tuple[int, int, int] | wx.Colour,  # 主颜色
-                 stop_color: tuple[int, int, int] | wx.Colour = None,  # 渐变停止颜色
-                 gradient_type: int = wx.GRADIENT_LINEAR,  # 渐变类型
-                 direction: int = wx.HORIZONTAL,  # 渐变方向
-                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None,  # 渐变途径点
-                 width: float = 1, pen_style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+                 color: tuple[int, int, int] | wx.Colour,
+                 stop_color: tuple[int, int, int] | wx.Colour = None,
+                 gradient_type: int = wx.GRADIENT_LINEAR,
+                 direction: Direction | int = Direction.HORIZONTAL,
+                 stops: list[tuple[float, tuple[int, int, int] | wx.Colour]] = None,
+                 width: float = 1, pen_style: int = wx.PENSTYLE_SOLID,
+
+                 # 用于圆形渐变
+                 radius: float = 100,
+                 gradient_from: tuple[float, float] | None = None,
+                 gradient_to: tuple[float, float] | None = None,
+                 ):
+        """
+        为GradientColor提供笔(Pen)的预定义配置
+        Improve color gradient config for Pen.
+
+        :param color: 主颜色
+        :param stop_color: 渐变停止颜色
+        :param gradient_type: 渐变类型
+        :param direction: 渐变方向 || 停止点所在方位
+        :param stops: 渐变途径颜色
+        :param width: 笔的线宽
+        :param pen_style: 笔的样式
+        :param radius: 圆形渐变 - 半径
+        :param gradient_from: 圆形渐变 - 渐变起始点, 以位置百分比定义 (0~1)
+        :param gradient_to: 圆形渐变 - 渐变结束点, 以位置百分比定义 (0~1)
+        """
         super().__init__(color, stop_color, gradient_type, direction, stops)
-        self.width = width
-        self.pen_style = pen_style
-        self.radius = radius
 
-    def create_pen(self, gc: wx.GraphicsContext,
-                   xy1: tuple[float, float], xy2: tuple[float, float] = None):
-        return self.create_pen_raw(gc, xy1, xy2, self.width, self.pen_style, self.radius)
+        self.width = width  # 笔的宽度
+        self.pen_style = pen_style  # 笔的样式
+        self.radius = radius  # 圆形渐变的半径
 
-    def create_pen_raw(self, gc: wx.GraphicsContext,
-                       xy1: tuple[float, float], xy2: tuple[float, float] = None,
-                       width: float = 1, style: int = wx.PENSTYLE_SOLID, radius: float = 100):
+        # 圆形渐变的起始位置, (0.0~1.0, 0.0~1.0)
+        self.gradient_from: tuple[float, float] = gradient_from if gradient_from else (0.5, 0.5)
+        # 圆形渐变的结束位置
+        self.gradient_to: tuple[float, float] | None = None if gradient_from is None else gradient_to
+
+    def create_pen(self, gc: wx.GraphicsContext, size: tuple[float, float]):
         """
-        只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
-        当设置了xy2时, 按照xy1 -> xy2的方向渐变
-        如果设置了渐变途径点 (self.stops), 那么按照 xy1 -> xy2的方向设置渐变
+        以渐变颜色创建一个笔,
+        Create a pen with gradient color.
+
+        :param gc: `wx.GraphicsContext`
+        :param size: 控件的大小
         """
-        pen = wx.GraphicsPenInfo(self, width * SCALE, style)
+        pen = wx.GraphicsPenInfo(self, self.width * SCALE, self.pen_style)
         if self.gradient_type == wx.GRADIENT_LINEAR:
-            if xy2 is None:  # 只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
-                if self.direction == wx.VERTICAL:
-                    xy1, xy2 = (0, 0), (0, xy1[1])
-                elif self.direction == wx.HORIZONTAL:
-                    xy1, xy2 = (0, 0), (xy1[0], 0)
-            last_color = self
-            if self.stops:  # 如果设置了渐变途径点 (self.stops), 那么按照 xy1 -> xy2的方向设置渐变
-                for percent, color in self.stops.items():
-                    t1 = xy1[0] + (xy2[0] - xy1[0]) * percent
-                    t2 = xy1[1] + (xy2[1] - xy1[1]) * percent
-                    pen = pen.LinearGradient(xy1[0], xy1[1], t1, t2, last_color, color)
-                    last_color = color
-            if self.stop_color:  # 设置了结束颜色
-                pen = pen.LinearGradient(xy1[0], xy1[1], xy2[0], xy2[1], last_color, self.stop_color)
+            from_pt = (0, 0)
+            if isinstance(self.direction, int) or isinstance(self.direction, float):
+                # center = (size[0] / 2, size[1] / 2)
+                raise NotImplementedError("Not Implemented direction as number")
+            elif self.direction == Direction.HORIZONTAL:
+                to_pt = (size[0], 0)
+            elif self.direction == Direction.VERTICAL:
+                to_pt = (0, size[1])
+            elif self.direction == Direction.TOP_LEFT_CORNER:
+                to_pt = size
+            elif self.direction == Direction.TOP_RIGHT_CORNER:
+                from_pt = (size[0], 0)
+                to_pt = (0, size[1])
+            else:
+                raise NotImplementedError(f"Not Implemented direction {self.direction} for linear gradient")
+
+            pen = pen.LinearGradient(*from_pt, *to_pt, self.gradient_stops)
         elif self.gradient_type == wx.GRADIENT_RADIAL:  # 圆形渐变
-            pen = pen.RadialGradient(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.stops)
+            gradient_center = (size[0] * self.gradient_from[0], size[1] * self.gradient_from[1])
+            if self.gradient_to:
+                stop_pt = (size[0] * self.gradient_to[0], size[1] * self.gradient_to[1])
+            elif self.direction == Direction.HORIZONTAL:
+                stop_pt = (0, size[1] / 2)
+            elif self.direction == Direction.VERTICAL:
+                stop_pt = (size[0] / 2, 0)
+            elif self.direction == Direction.TOP_LEFT_CORNER:
+                stop_pt = (0, 0)
+            elif self.direction == Direction.TOP_RIGHT_CORNER:
+                stop_pt = (size[0], 0)
+            elif self.direction == Direction.BOTTOM_LEFT_CORNER:
+                stop_pt = (0, size[0])
+            elif self.direction == Direction.BOTTOM_RIGHT_CORNER:
+                stop_pt = size
+            else:
+                raise NotImplementedError(f"Not Implemented direction {self.direction} for radial gradient")
+            pen = pen.RadialGradient(*gradient_center, *stop_pt, self.radius, self.gradient_stops)
         return gc.CreatePen(pen)
 
 
 class GradientBrush(GradientColor):
-    """
-    为GradientColor提供刷(Brush)的预定义配置
-    """
+    def __init__(self,
+                 color: tuple[int, int, int] | wx.Colour,  # 主颜色
+                 stop_color: tuple[int, int, int] | wx.Colour = None,  # 渐变停止颜色
+                 gradient_type: int = wx.GRADIENT_LINEAR,  # 渐变类型
+                 direction: Direction | int = Direction.HORIZONTAL,  # 渐变方向
+                 stops: dict[float, tuple[int, int, int] | wx.Colour] = None,  # 渐变途径点
+                 radius: float = 100,
+                 gradient_from: tuple[float, float] | None = None,
+                 gradient_to: tuple[float, float] | None = None,
+                 ):
+        """
+        为GradientColor提供刷(Brush)的预定义配置
+        Improve color gradient config for Brush.
+
+        :param color: 主颜色
+        :param stop_color: 渐变停止颜色
+        :param gradient_type: 渐变类型
+        :param direction: 渐变方向 || 停止点所在方位
+        :param stops: 渐变途径颜色
+        :param radius: 圆形渐变 - 半径
+        :param gradient_from: 圆形渐变 - 渐变起始点, 以位置百分比定义 (0~1)
+        :param gradient_to: 圆形渐变 - 渐变结束点, 以位置百分比定义 (0~1)
+        """
+        super().__init__(color, stop_color, gradient_type, direction, stops)
+
+        self.radius = radius
+        self.gradient_from = gradient_from
+        self.gradient_to = gradient_to
 
     def create_brush(self,
-                     gc: wx.GraphicsContext,
-                     xy1: tuple[float, float], xy2: tuple[float, float] = None,
-                     radius: float = 100):
+                         gc: wx.GraphicsContext,
+                         size: tuple[float, float]):
         """
-        只设置了xy1时, 按照设定的方向 (垂直/水平) 进行渐变
-        当设置了xy2时, 按照xy1 -> xy2的方向渐变
+        以渐变颜色创建一个笔刷
+        Create a brush with gradient color.
+
+        :param gc: wx.GraphicsContext
+        :param size: 控件的大小
         """
         if self.gradient_type == wx.GRADIENT_LINEAR:
-            if xy2 is None:
-                if self.direction == wx.VERTICAL:
-                    xy1, xy2 = (0, 0), (0, xy1[1])
-                elif self.direction == wx.HORIZONTAL:
-                    xy1, xy2 = (0, 0), (xy1[0], 0)
-            return gc.CreateLinearGradientBrush(xy1[0], xy1[1], xy2[0], xy2[1], self.gradient_stops)
+            from_pt = (0, 0)
+            if isinstance(self.direction, int) or isinstance(self.direction, float):
+                # center = (size[0] / 2, size[1] / 2)
+                raise NotImplementedError("Not Implemented direction as number")
+            elif self.direction == Direction.HORIZONTAL:
+                stop_pt = (size[0], 0)
+            elif self.direction == Direction.VERTICAL:
+                stop_pt = (0, size[1])
+            elif self.direction == Direction.TOP_LEFT_CORNER:
+                stop_pt = size
+            elif self.direction == Direction.TOP_RIGHT_CORNER:
+                from_pt = (size[0], 0)
+                stop_pt = (0, size[1])
+            else:
+                raise NotImplementedError(f"Not Implemented direction {self.direction} for linear gradient")
+
+            return gc.CreateLinearGradientBrush(*from_pt, *stop_pt, self.gradient_stops)
         elif self.gradient_type == wx.GRADIENT_RADIAL:
-            return gc.CreateRadialGradientBrush(xy1[0], xy1[1], xy2[0], xy2[1], radius, self.gradient_stops)
+            gradient_center = (size[0] * self.gradient_from[0], size[1] * self.gradient_from[1])
+            if self.gradient_to:
+                stop_pt = (size[0] * self.gradient_to[0], size[1] * self.gradient_to[1])
+            elif self.direction == Direction.HORIZONTAL:
+                stop_pt = (0, size[1] / 2)
+            elif self.direction == Direction.VERTICAL:
+                stop_pt = (size[0] / 2, 0)
+            elif self.direction == Direction.TOP_LEFT_CORNER:
+                stop_pt = (0, 0)
+            elif self.direction == Direction.TOP_RIGHT_CORNER:
+                stop_pt = (size[0], 0)
+            elif self.direction == Direction.BOTTOM_LEFT_CORNER:
+                stop_pt = (0, size[0])
+            elif self.direction == Direction.BOTTOM_RIGHT_CORNER:
+                stop_pt = size
+            else:
+                raise NotImplementedError(f"Not Implemented direction {self.direction} for radial gradient")
+
+            return gc.CreateRadialGradientBrush(*gradient_center, *stop_pt, self.radius, self.gradient_stops)
         return gc.CreateBrush(wx.Brush(self))
