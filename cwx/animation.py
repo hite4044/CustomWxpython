@@ -1,3 +1,7 @@
+"""
+CustomWxpython 的动画库, 提供诸多动画
+Animation library of CustomWxpython, provide some animation.
+"""
 from bisect import bisect_left
 from dataclasses import dataclass
 from enum import Enum
@@ -53,7 +57,7 @@ class Animation:
         return self.raw_get_value(percent)
 
     def get_next_frame_time(self, fps: float):
-        return self.during
+        return 1 / fps
 
     @property
     def int_value(self) -> int:
@@ -72,7 +76,7 @@ class BlinkAnimation(Animation):
         return self.range[1] if percent > self.threshold else self.range[0]
 
 
-class KeyFrameWay(Enum):
+class KeyFrameCurves(Enum):
     BLINK = 0  # 突然闪现
     SMOOTH = 1  # 平滑匀速运动
 
@@ -90,7 +94,7 @@ class KeyFrameWay(Enum):
 
 @dataclass
 class KeyFrame:
-    way: KeyFrameWay
+    way: KeyFrameCurves
     percent: float
     data: float
 
@@ -101,10 +105,10 @@ class KeyFrameAnimation(Animation):
         self.percents: list[float] = sorted((key_frame.percent for key_frame in key_frames))
         self.key_frames: list[KeyFrame] = sorted((key_frame for key_frame in key_frames), key=lambda x: x.percent)
         if 0 not in self.percents:
-            self.key_frames.insert(0, KeyFrame(KeyFrameWay.BLINK, 0, self.key_frames[0].data))
+            self.key_frames.insert(0, KeyFrame(KeyFrameCurves.BLINK, 0, self.key_frames[0].data))
             self.percents.insert(0, 0)
         if 1 not in self.percents:
-            self.key_frames.append(KeyFrame(KeyFrameWay.BLINK, 1, self.key_frames[-1].data))
+            self.key_frames.append(KeyFrame(KeyFrameCurves.BLINK, 1, self.key_frames[-1].data))
             self.percents.append(1)
 
         self.raw_range = (self.key_frames[0].data, self.key_frames[-1].data)
@@ -140,17 +144,17 @@ class KeyFrameAnimation(Animation):
             local_percent = (percent - frame.percent) / (next_frame.percent - frame.percent)
 
         match frame.way:
-            case KeyFrameWay.BLINK:
+            case KeyFrameCurves.BLINK:
                 return start
-            case KeyFrameWay.SMOOTH:
+            case KeyFrameCurves.SMOOTH:
                 return start + size * local_percent
-            case KeyFrameWay.QUADRATIC_EASE:
+            case KeyFrameCurves.QUADRATIC_EASE:
                 if local_percent < 0.5:
                     eased = 2 * (local_percent ** 2)
                 else:
                     eased = -1 + 4 * local_percent - 2 * (local_percent ** 2)
                 return start + size * eased
-            case KeyFrameWay.CUBE_EASE:
+            case KeyFrameCurves.CUBE_EASE:
                 if local_percent < 0.5:
                     eased = 4 * (local_percent ** 3)
                 else:
@@ -179,7 +183,7 @@ class KeyFrameAnimation(Animation):
 
 
 class EZKeyFrameAnimation(KeyFrameAnimation):
-    def __init__(self, during: float, way: KeyFrameWay, start: float, end: float):
+    def __init__(self, during: float, way: KeyFrameCurves, start: float, end: float):
         super().__init__(during, [KeyFrame(way, 0, 0.0), KeyFrame(way, 1, 1.0)])
         self.start = start
         self.end = end
@@ -214,7 +218,7 @@ class ColorGradationAnimation(KeyFrameAnimation):
         return wx.Colour(new_rgba)
 
 
-class MutilKeyFrameAnimation(Animation):
+class MultiKeyFrameAnimation(Animation):
     def __init__(self, during: float, animations: dict[str, KeyFrameAnimation]):
         super().__init__(during)
         self.animations = animations
@@ -278,7 +282,11 @@ class AnimationGroup(Animation):
         raise NotImplementedError
 
 
-def full_keyframe(way: KeyFrameWay):
+def MAKE_ANIMATION(way: KeyFrameCurves):
+    """
+    以指定的动画曲线创建一个从0~1的关键帧列表
+
+    """
     return [
         KeyFrame(way, 0, 0.0),
         KeyFrame(way, 1, 1.0)

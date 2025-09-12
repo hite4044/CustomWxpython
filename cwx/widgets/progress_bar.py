@@ -4,8 +4,9 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from .. import KeyFrameWay, SCALE
+from .. import KeyFrameCurves, SCALE
 from ..animation import EZKeyFrameAnimation
+from ..lib.perf import Counter
 from ..style import ProgressBarStyle, Style
 from ..render import GCRender, ARC
 
@@ -22,7 +23,7 @@ class ProgressBar(AnimationWidget):
         super().__init__(parent, style, widget_style, fps=60)
         self.value = value
         self.range = range
-        self.value_anim = EZKeyFrameAnimation(0.3, KeyFrameWay.QUADRATIC_EASE, value / range, value / range)
+        self.value_anim = EZKeyFrameAnimation(0.3, KeyFrameCurves.QUADRATIC_EASE, value / range, value / range)
         self.reg_animation("value", self.value_anim)
 
         if style | wx.VERTICAL:
@@ -42,6 +43,7 @@ class ProgressBar(AnimationWidget):
         self.bg_brush = wx.Brush(style.bg)
 
     def draw_content(self, gc: wx.GraphicsContext):
+        timer = Counter(create_start=True)
         w, h = type_cast(tuple[int, int], self.GetClientSize())
         border_width = round(self.style.border.width * SCALE)
         TRANSPARENT_PEN = gc.CreatePen(wx.GraphicsPenInfo(wx.BLACK, border_width, wx.PENSTYLE_TRANSPARENT))
@@ -55,7 +57,8 @@ class ProgressBar(AnimationWidget):
         # 进度条
         gc.SetPen(TRANSPARENT_PEN)
         target_x = (w - border_width * 2) * self.value_anim.value
-        gc.SetBrush(self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h)))
+        br = self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h))
+        gc.SetBrush(br)
         if target_x <= self.style.corner_radius * 2:
             radius = self.style.corner_radius
             path = gc.CreatePath()
@@ -73,6 +76,7 @@ class ProgressBar(AnimationWidget):
             gc.DrawRoundedRectangle(border_width, border_width,
                                     target_x, h - border_width * 2,
                                     self.style.corner_radius)
+        print(timer.endT())
 
     def update_animation(self):
         self.value_anim.set_range(self.value_anim.value, self.value / self.range)

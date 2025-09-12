@@ -1,9 +1,13 @@
+"""
+按钮
+"""
+
 from typing import cast as type_cast
 
 import wx
 
 from .animation_widget import AnimationWidget
-from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameWay, MutilKeyFrameAnimation, ColorGradationAnimation
+from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameCurves, MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
 from ..style import Style, BtnStyle
 
@@ -18,7 +22,7 @@ class ButtonEvent(wx.PyCommandEvent):
 
 class Button(AnimationWidget):
     style: BtnStyle
-    bg_anim: MutilKeyFrameAnimation
+    bg_anim: MultiKeyFrameAnimation
 
     bg_brush: wx.Brush
     text_color: wx.Colour
@@ -27,16 +31,16 @@ class Button(AnimationWidget):
     def __init__(self, parent: wx.Window, label: str, widget_style: BtnStyle = None):
         super().__init__(parent, widget_style=widget_style, fps=60)
         self.SetLabel(label)
-        self.bg_anim = MutilKeyFrameAnimation \
+        self.bg_anim = MultiKeyFrameAnimation \
             (0.2,
              {"float":
                   KeyFrameAnimation(0.2, [
-                      KeyFrame(KeyFrameWay.SMOOTH, 0, 0.0),
-                      KeyFrame(KeyFrameWay.SMOOTH, 1, -0.08)]),
+                      KeyFrame(KeyFrameCurves.SMOOTH, 0, 0.0),
+                      KeyFrame(KeyFrameCurves.SMOOTH, 1, -0.08)]),
               "click":
                   KeyFrameAnimation(0.1, [
-                      KeyFrame(KeyFrameWay.SMOOTH, 0, -0.08),
-                      KeyFrame(KeyFrameWay.SMOOTH, 1, -0.16)
+                      KeyFrame(KeyFrameCurves.SMOOTH, 0, -0.08),
+                      KeyFrame(KeyFrameCurves.SMOOTH, 1, -0.16)
                   ]),
               "disable":
                   ColorGradationAnimation \
@@ -44,9 +48,9 @@ class Button(AnimationWidget):
                        self.style.bg.copy,
                        self.style.bg.copy.add_luminance(-0.02),
                        [
-                           KeyFrame(KeyFrameWay.SMOOTH, 0,
+                           KeyFrame(KeyFrameCurves.SMOOTH, 0,
                                     0),
-                           KeyFrame(KeyFrameWay.SMOOTH, 1, 1)
+                           KeyFrame(KeyFrameCurves.SMOOTH, 1, 1)
                        ])})
 
         self.reg_animation("bg", self.bg_anim)
@@ -58,7 +62,7 @@ class Button(AnimationWidget):
             data = self.bg_anim.value
         else:
             return
-        print(f"Lum: {data}")
+        print(f"Lum: {data}", flush=True)
         self.style.bg.reset()
         self.style.bg.add_luminance(data)
         self.bg_brush = wx.Brush(self.style.bg)

@@ -218,7 +218,7 @@ class GradientColor(wx.Colour):
         self.gradient_type = gradient_type
         self.direction: Direction | int = direction
 
-        self.gradient_stops = wx.GraphicsGradientStops(color, stop_color)
+        self.gradient_stops = wx.GraphicsGradientStops(color, stop_color if stop_color is not None else color)
         for percent, stop_color in (stops if stops else []):
             self.gradient_stops.Add(wx.Colour(stop_color), percent)
 

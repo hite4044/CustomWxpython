@@ -5,11 +5,12 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .. import AnimationGroup, ColorGradationAnimation
-from ..animation import KeyFrameWay, EZKeyFrameAnimation, full_keyframe
+from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIMATION
 from ..dpi import SCALE
 from ..style import Style, TextCtrlStyle
 
-TC_X_PAD = TC_Y_PAD = 6
+TC_X_PAD = TC_Y_PAD = 6 * 2
+print(SCALE)
 
 
 class TextCtrl(AnimationWidget):
@@ -34,13 +35,13 @@ class TextCtrl(AnimationWidget):
         self.selecting = False  # 是否正在选择
         self.last_mouse_pos = wx.Point()  # 最后鼠标位置
 
-        self.cursor_pos_anim = EZKeyFrameAnimation(0.15, KeyFrameWay.QUADRATIC_EASE, -1, -1)
-        self.border_width = EZKeyFrameAnimation(0.15, KeyFrameWay.SMOOTH, self.style.border_width,
+        self.cursor_pos_anim = EZKeyFrameAnimation(0.15, KeyFrameCurves.QUADRATIC_EASE, -1, -1)
+        self.border_width = EZKeyFrameAnimation(0.15, KeyFrameCurves.SMOOTH, self.style.border_width,
                                                 self.style.active_border_width)
         self.border_tl_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_tl_border,
-                                                       full_keyframe(KeyFrameWay.SMOOTH))
+                                                       MAKE_ANIMATION(KeyFrameCurves.SMOOTH))
         self.border_br_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_br_border,
-                                                       full_keyframe(KeyFrameWay.SMOOTH))
+                                                       MAKE_ANIMATION(KeyFrameCurves.SMOOTH))
         self.border_anim = AnimationGroup({
             "width": self.border_width,
             "tl_color": self.border_tl_color,
@@ -266,8 +267,11 @@ class TextCtrl(AnimationWidget):
         w, h = type_cast(tuple, dc.GetTextExtent(self.text))
         pad_x = TC_X_PAD * 2
         pad_y = TC_Y_PAD * 2
-        self.RawSetSize((w + pad_x, h + pad_y))
-        self.RawSetMinSize((w + pad_x, h + pad_y))
+        size = (w + pad_x, h + pad_y)
+        print(size)
+        self.RawSetSize(size)
+        self.RawSetMinSize(size)
+        self.RawCacheBestSize(size)
 
     def draw_content(self, gc: wx.GraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
@@ -279,6 +283,7 @@ class TextCtrl(AnimationWidget):
             t_w, t_h, t_x, t_y = self.box_extent
         if not self.text_extents:
             self.load_text_extends(gc)
+        self.text_extents: list[float]
 
         # 绘制背景
         border_width = self.border_width.value * SCALE

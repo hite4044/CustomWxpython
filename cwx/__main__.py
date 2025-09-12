@@ -14,7 +14,7 @@ faulthandler.enable()
 class Frame(wx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
-        self.SetFont(ft(12))
+        self.SetFont(ft(9))
         blur_window(self)
         self.SetBackgroundColour(wx.BLACK)
         # pywinstyles.apply_style(self, "acrylic")

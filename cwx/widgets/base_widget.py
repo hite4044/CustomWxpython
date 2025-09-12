@@ -79,6 +79,9 @@ class Widget(wx.Window):
     def RawSetMaxSize(self, size: tuple[int, int]):
         super().SetMaxSize(size)
 
+    def RawCacheBestSize(self, size: tuple[int, int]):
+        super().CacheBestSize(size)
+
     # 主题函数
     # Method about theme.
 
