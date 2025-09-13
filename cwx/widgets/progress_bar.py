@@ -8,7 +8,7 @@ from .. import KeyFrameCurves, SCALE
 from ..animation import EZKeyFrameAnimation
 from ..lib.perf import Counter
 from ..style import ProgressBarStyle, Style
-from ..render import GCRender, ARC
+from ..render import GCRender, ARC, CustomGraphicsContext
 
 
 class ProgressBar(AnimationWidget):
@@ -42,7 +42,7 @@ class ProgressBar(AnimationWidget):
         super().load_widget_style(style)
         self.bg_brush = wx.Brush(style.bg)
 
-    def draw_content(self, gc: wx.GraphicsContext):
+    def draw_content(self, gc: CustomGraphicsContext):
         timer = Counter(create_start=True)
         w, h = type_cast(tuple[int, int], self.GetClientSize())
         border_width = round(self.style.border.width * SCALE)

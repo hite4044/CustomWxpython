@@ -3,6 +3,7 @@ from typing import cast as type_cast
 import wx
 
 from .base_widget import Widget
+from ..render import CustomGraphicsContext
 from ..style import StaticLineStyle, Style
 
 
@@ -26,7 +27,7 @@ class StaticLine(Widget):
         super().load_widget_style(style)
         self.bg_brush = wx.Brush(style.bg)
 
-    def draw_content(self, gc: wx.GraphicsContext):
+    def draw_content(self, gc: CustomGraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
         gc.DrawRectangle(0, 0, w, h)

@@ -42,5 +42,5 @@ __all__ = [
     "ft",
     "SCALE",
     "GCRender",
-    "GraphicsContextWarper"
+    "CustomGraphicsContext"
 ]

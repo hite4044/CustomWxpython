@@ -7,6 +7,7 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
+from ..render import CustomGraphicsContext
 from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameCurves, MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
 from ..style import Style, BtnStyle
@@ -107,7 +108,7 @@ class Button(AnimationWidget):
         self.text_color = style.fg
         self.border_pen = wx.GraphicsPenInfo(style.border_color, style.border_width * SCALE, style.border_style)
 
-    def draw_content(self, gc: wx.GraphicsContext):
+    def draw_content(self, gc: CustomGraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
 
         # 绘制背景

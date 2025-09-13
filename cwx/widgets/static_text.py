@@ -3,6 +3,7 @@ from typing import cast as type_cast
 import wx
 
 from .base_widget import Widget
+from ..render import CustomGraphicsContext
 from ..style import WidgetStyle
 
 
@@ -25,6 +26,6 @@ class StaticText(Widget):
         super().load_widget_style(style)
         self.text_color = style.fg
 
-    def draw_content(self, gc: wx.GraphicsContext):
+    def draw_content(self, gc: CustomGraphicsContext):
         gc.SetFont(gc.CreateFont(self.GetFont(), col=wx.Colour(255, 255, 255)))
         gc.DrawText(self.GetLabel(), 0, 0)
