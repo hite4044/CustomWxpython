@@ -23,7 +23,7 @@ LOG_PIXEL_SY = 90
 
 def get_screen_scale():
     # return 2.0, 2.0
-    return 1.5, 1.5
+    return 1.0, 1.0
     user32.SetProcessDPIAware()
     hDC = GetDC(0)
     x_dpi = GetDeviceCaps(hDC, LOG_PIXEL_SX)
@@ -32,7 +32,10 @@ def get_screen_scale():
 
 
 def translate_size(size: tuple[int, int]):
-    return int(size[0] * X_SCALE), int(size[1] * Y_SCALE)
+    return (
+        -1 if size[0] == -1 else round(size[0] * X_SCALE),
+        -1 if size[1] == -1 else round(size[1] * Y_SCALE)
+    )
 
 
 X_SCALE, Y_SCALE = get_screen_scale()

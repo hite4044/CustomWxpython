@@ -1,7 +1,12 @@
 from time import perf_counter
 
+from win32gui import GetWindowLong, SetWindowLong
+import win32con as con
+
+from cwx.widgets.base_widget import TopWindowCanvas
 from cwx.blur import blur_window
 from cwx.font import ft
+from cwx.lib.dwm import ACCENT_STATE
 
 timer = perf_counter()
 import wx
@@ -11,26 +16,28 @@ import faulthandler
 faulthandler.enable()
 
 
-class Frame(wx.Frame):
+class Frame(cwx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
+
         self.SetFont(ft(9))
-        blur_window(self)
         self.SetBackgroundColour(wx.BLACK)
-        # pywinstyles.apply_style(self, "acrylic")
-        # self.SetBackgroundColour(wx.Colour(0, 0, 0))
+        #self.canvas = TopWindowCanvas(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(cwx.StaticText(self, "hite404"))
+        sizer.Add(cwx.StaticText(self, "       Custom Wxpython   hite404"))
 
         sizer.Add(cwx.Button(self, "点我啊!"), 0)
 
         sizer.AddSpacer(5)
 
-        tc = cwx.TextCtrl(self, "fuck you 阿敏哦斯++++五十")
+        tc = cwx.TextCtrl(self, "Minecraft")
         tc.load_widget_style(tc.style.桃子)
-        sizer.Add(tc, 0)
+        tc.SetForegroundColour(wx.Colour(200, 200, 200))
+        tc.style.bg = wx.Colour(0, 0, 0, 0)
+        tc.load_widget_style(tc.style)
+        sizer.Add(tc, 0, wx.EXPAND)
 
         sizer.AddSpacer(5)
 
@@ -42,7 +49,7 @@ class Frame(wx.Frame):
         def func2():
             bar.SetValue(80)
             wx.CallLater(3000, func1)
-        #wx.CallLater(1000, func1)
+        # wx.CallLater(1000, func1)
         sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 5)
 
         sizer.AddSpacer(5)

@@ -1,7 +1,11 @@
+import typing
+from dataclasses import dataclass
+
 import wx
 
 from ..dpi import translate_size
 from ..event import PyCommandEvent
+from ..lib.perf import Counter
 from ..render import CustomGraphicsContext
 from ..style import Style, WidgetStyle
 
@@ -31,10 +35,9 @@ class Widget(wx.Window):
     style: WidgetStyle  # 组件自有样式
 
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
-        super().__init__(parent, style=style)
-        self.Bind(wx.EVT_PAINT, self.on_paint)
+        super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW)
         super().SetBackgroundColour(wx.BLACK)
-        self.SetDoubleBuffered(True)
+        # self.SetDoubleBuffered(True)
 
         if isinstance(parent, Widget):
             self.gen_style = parent.gen_style
@@ -48,10 +51,19 @@ class Widget(wx.Window):
         self.load_style(self.gen_style)
         delattr(self, "init_style")
         self.Bind(wx.EVT_SIZE, self.on_size)
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+
+        TopWindowCanvas.auto_handling_window(self)
 
     def on_size(self, event: wx.SizeEvent):
         event.Skip()
         self.Refresh()
+
+    def __hash__(self):
+        return hash(self.GetHandle())
+
+    def __eq__(self, other):
+        return other is self
 
     # 一些关于大小设置的DPI替换
     # Some method hook about setting size.
@@ -133,3 +145,164 @@ class Widget(wx.Window):
 
     def draw_content(self, gc: CustomGraphicsContext):
         pass
+
+
+@dataclass
+class CanvasCache:
+    window: int  # 窗口的句柄
+    parent_window: int = None  # 父窗口的句柄
+
+    own_bitmap: wx.GraphicsBitmap | None = None  # 窗口自己的渲染图
+    own_bitmap_size: tuple[int, int] | None = None  # 大小
+
+    has_child: bool = False
+    rendered_bitmap: wx.GraphicsBitmap | None = None  # 包含子窗口画面的渲染图
+    rendered_bitmap_size: tuple[int, int] | None = None  # 大小
+
+
+class TopWindowCanvas:
+    def __init__(self, canvas_host: wx.TopLevelWindow):
+        canvas_host.CWX_canvas = self
+        self.canvas_host = canvas_host
+
+        self.handled_windows: dict[int, Widget] = {}
+        self.render_cache: dict[int, CanvasCache] = {}  # 窗口句柄 -> 渲染缓存
+
+        self.canvas_host.SetDoubleBuffered(True)
+        self.canvas_host.Bind(wx.EVT_PAINT, self.on_paint, self.canvas_host)
+        self.canvas_host.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
+
+        self.pos_test_window = wx.Window(canvas_host, style=wx.TRANSPARENT_WINDOW)
+        self.pos_test_window.SetBackgroundColour(wx.BLACK)
+        self.pos_test_window.SetPosition((0, 0))
+        self.pos_test_window.SetSize((1, 1))
+
+        self.alpha_buffer = b"\x00" * 1024 * 1024
+        self.buffer = None
+
+        self.canvas_image = wx.Image(1, 1)
+        self.canvas_image.SetAlphaBuffer(self.alpha_buffer)
+
+    @staticmethod
+    def auto_handling_window(window: Widget):
+        parent = window.GetTopLevelParent()
+        if hasattr(parent, "CWX_canvas"):
+            instance: TopWindowCanvas = getattr(parent, "CWX_canvas")
+            instance.handling_window(window)
+
+    def handling_window(self, window: Widget):
+        self.handled_windows[window.GetHandle()] = window
+        window.Unbind(wx.EVT_PAINT)
+        window.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
+
+        window.Unbind(wx.EVT_SIZE)
+        window.Bind(wx.EVT_SIZE, self.on_window_size, window)
+        window.Refresh = lambda: self.refresh_window(window)
+
+        window.SetDoubleBuffered(False)
+
+    def on_host_size(self, event: wx.SizeEvent):
+        event.Skip()
+        self.canvas_host.Refresh()
+        self.canvas_host.Layout()
+
+    def on_window_size(self, event: wx.SizeEvent):
+        event.Skip()
+        window = event.GetEventObject()
+        assert isinstance(window, Widget)
+        # 如果大小对不上, 删除渲染缓存
+        if cache := self.render_cache.get(window.GetHandle()):
+            if cache.own_bitmap_size and cache.own_bitmap_size != event.GetSize().Get():
+                self.remove_cache(window)
+        self.canvas_host.Refresh()
+
+    def refresh_window(self, window: Widget):
+        self.remove_cache(window)
+        self.canvas_host.Refresh()
+
+    def remove_cache(self, window: Widget, include_own: bool = True):
+        # print(window.__class__.__name__, "Remove cache")
+        if window.GetHandle() not in self.render_cache:
+            return
+        cache = self.render_cache[window.GetHandle()]
+        cache.rendered_bitmap = None
+        cache.rendered_bitmap_size = None
+        if include_own:
+            cache.own_bitmap = None
+            cache.own_bitmap_size = None
+
+        if cache.parent_window:
+            parent_window = self.handled_windows[cache.parent_window]
+            self.remove_cache(parent_window, include_own=False)
+
+    def on_paint(self, _):
+        dc = wx.BufferedPaintDC(self.canvas_host)
+        timer = Counter()
+
+        gc = CustomGraphicsContext(wx.GraphicsContext.Create(dc))
+        dc.Clear()
+        for child in self.canvas_host.GetChildren():
+            if isinstance(child, Widget):
+                self.draw_wnd(gc, self.canvas_host, child)
+
+        print(timer.endT())
+
+    def draw_wnd(self, gc: CustomGraphicsContext, root_window: wx.Window, window: Widget):
+        # 计算位置
+        root_pos = self.pos_test_window.GetScreenPosition()
+        wnd_pos, size = window.GetScreenPosition(), window.GetClientSize().Get()
+        pos = (wnd_pos.x - root_pos.x, wnd_pos.y - root_pos.y)
+
+        # 加载缓存
+        if window.GetHandle() not in self.render_cache:
+            parent_handle = None if window.GetParent() is root_window else window.GetParent().GetHandle()
+            cache = CanvasCache(window.GetHandle(), parent_handle)
+            self.render_cache[window.GetHandle()] = cache
+        else:
+            cache = self.render_cache[window.GetHandle()]
+
+        # 根据完整渲染缓存绘制
+        if cache.rendered_bitmap:
+            gc.DrawBitmap(cache.rendered_bitmap, *pos, *cache.rendered_bitmap_size)
+            return
+        elif cache.own_bitmap and not cache.has_child:
+            # print(window.__class__.__name__, "Cache Hit")
+            gc.DrawBitmap(cache.own_bitmap, *pos, *cache.own_bitmap_size)
+            return
+
+        # 仅根据部分渲染缓存绘制
+        if cache.own_bitmap:
+            # print(window.__class__.__name__, "Cache Hit")
+            gc.DrawBitmap(cache.own_bitmap, *pos, *cache.own_bitmap_size)
+            image = cache.own_bitmap.ConvertToImage()
+        else:  # 绘制内容到图片里
+            # print("Redraw", window.__class__.__name__)
+            image = wx.Image(*size, clear=True)
+            image.SetAlphaBuffer(self.alpha_buffer)
+            wnd_gc = CustomGraphicsContext(wx.GraphicsContext.Create(image))
+            window.draw_content(wnd_gc)
+            wnd_gc.Destroy()
+            gc_bitmap = gc.CreateBitmapFromImage(image)
+            gc.DrawBitmap(gc_bitmap, *pos, *size)
+            cache.own_bitmap = gc_bitmap
+            cache.own_bitmap_size = typing.cast(tuple[int, int], size)
+
+        # 如果没有子窗口, 跳过子窗口绘制
+        cache.has_child = bool(window.GetChildren())
+        if not window.GetChildren():
+            cache.rendered_bitmap = None
+            cache.rendered_bitmap_size = None
+            return
+
+        # 在自身窗口内容上绘制子窗口内容
+        print(window.GetHandle(), "Cache Unhit - Child")
+        wnd_gc = CustomGraphicsContext(wx.GraphicsContext.Create(image))
+        for child in window.GetChildren():
+            if isinstance(child, Widget):
+                self.draw_wnd(wnd_gc, root_window, child)
+        wnd_gc.Destroy()
+        gc_bitmap = gc.CreateBitmapFromImage(image)
+        gc.DrawBitmap(gc_bitmap, *pos, *size)
+
+        cache.rendered_bitmap = gc_bitmap
+        cache.rendered_bitmap_size = typing.cast(tuple[int, int], size)

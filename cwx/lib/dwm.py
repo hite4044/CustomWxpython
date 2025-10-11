@@ -32,7 +32,7 @@ class DWMWINDOWATTRIBUTE:
 
 # noinspection PyPep8Naming,SpellCheckingInspection
 class ACCENT_STATE:
-    ACCENT_DISABLED = 0
+    ACCENT_DISABLED = 0  # 禁用
     ACCENT_ENABLE_GRADIENT = 1  # 纯色背景
     ACCENT_ENABLE_TRANSPARENTGRADIENT = 2  # 带颜色透明
     ACCENT_ENABLE_BLURBEHIND = 3  # 模糊
@@ -42,7 +42,7 @@ class ACCENT_STATE:
 
 
 # noinspection PyPep8Naming,SpellCheckingInspection
-class WINDOWCOMPOSITIONATTRIB:
+class WINDOW_COMPOSITION_ATTRIB:
     WCA_ACCENT_POLICY = 19
 
 
@@ -73,7 +73,7 @@ class DWM_BLURBEHIND(ctypes.Structure):
 
 
 # noinspection PyPep8Naming,SpellCheckingInspection
-class WINDOWCOMPOSITIONATTRIBDATA(ctypes.Structure):
+class WINDOW_COMPOSITION_ATTRIB_DATA(ctypes.Structure):
     def __init__(self, Attrib: int, pvData: ctypes.POINTER, cbData: int):
         super().__init__(Attrib, ctypes.cast(pvData, ctypes.c_void_p), cbData)
 
@@ -110,17 +110,17 @@ except OSError:
     pass
 
 
-def DwmSetWindowAttribute(hwnd: int, dw_attr: int, pw_attr: ctypes.POINTER, cb_attr: int) -> int:
+def DwmSetWindowAttribute(hwnd: int, dw_attr: int, pw_attr: ctypes.c_void_p, cb_attr: int) -> int:
     return rawDwmSetWindowAttribute(hwnd, dw_attr, pw_attr, cb_attr)
 
 
-def DwmExtendFrameIntoClientArea(hwnd: int, pw_attr: ctypes.POINTER) -> int:
+def DwmExtendFrameIntoClientArea(hwnd: int, pw_attr: ctypes.POINTER(MARGINS)) -> int:
     return rawDwmExtendFrameIntoClientArea(hwnd, pw_attr)
 
 
-def DwmEnableBlurBehindWindow(hwnd: int, pw_attr: ctypes.POINTER) -> int:
+def DwmEnableBlurBehindWindow(hwnd: int, pw_attr: ctypes.POINTER(DWM_BLURBEHIND)) -> int:
     return rawDwmEnableBlurBehindWindow(hwnd, pw_attr)
 
 
-def SetWindowCompositionAttribute(hwnd: int, pw_attr: ctypes.POINTER) -> int:
+def SetWindowCompositionAttribute(hwnd: int, pw_attr: ctypes.POINTER(WINDOW_COMPOSITION_ATTRIB_DATA)) -> int:
     return rawSetWindowCompositionAttribute(hwnd, pw_attr)

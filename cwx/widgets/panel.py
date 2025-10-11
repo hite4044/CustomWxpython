@@ -1,5 +1,6 @@
-import wx
+from .base_widget import Widget
 
 
-class Panel(wx.Panel):
+class Panel(Widget):
+    """"""
     pass

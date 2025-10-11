@@ -14,10 +14,10 @@ class StaticLine(Widget):
     def __init__(self, parent: wx.Window, style: int = wx.HORIZONTAL, widget_style: StaticLineStyle = None):
         super().__init__(parent, widget_style=widget_style)
         if style in [wx.HORIZONTAL, wx.LI_HORIZONTAL]:
-            wx.Window.SetSize(self, (-1, 1))
+            self.SetSize((-1, 1))
         elif style in [wx.VERTICAL, wx.LI_VERTICAL]:
-            wx.Window.SetSize(self, (1, -1))
-        wx.Window.SetMinSize(self, (1, 1))
+            self.SetSize((1, -1))
+        self.SetMinSize((1, 1))
 
     @staticmethod
     def translate_style(style: Style) -> StaticLineStyle:
@@ -28,6 +28,6 @@ class StaticLine(Widget):
         self.bg_brush = wx.Brush(style.bg)
 
     def draw_content(self, gc: CustomGraphicsContext):
-        w, h = type_cast(tuple[int, int], self.GetSize())
+        w, h = type_cast(tuple[int, int], gc.GetSize())
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
         gc.DrawRectangle(0, 0, w, h)

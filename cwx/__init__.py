@@ -4,6 +4,7 @@ from cwx.style.__init__ import *
 from .widgets.animation_widget import *
 from .widgets.base_widget import *
 from .widgets.button import *
+from .widgets.frame import *
 from .widgets.panel import *
 from .widgets.progress_bar import *
 from .widgets.static_line import *
@@ -12,6 +13,7 @@ from .widgets.text_ctrl import *
 
 __all__ = [
     # Widgets
+    "Frame",
     "Widget",
     "Panel",
     "AnimationWidget",

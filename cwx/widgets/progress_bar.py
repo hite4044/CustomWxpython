@@ -4,11 +4,10 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from .. import KeyFrameCurves, SCALE
-from ..animation import EZKeyFrameAnimation
-from ..lib.perf import Counter
-from ..style import ProgressBarStyle, Style
+from ..animation import EZKeyFrameAnimation, KeyFrameCurves
+from ..dpi import SCALE
 from ..render import GCRender, ARC, CustomGraphicsContext
+from ..style import ProgressBarStyle, Style
 
 
 class ProgressBar(AnimationWidget):
@@ -43,7 +42,6 @@ class ProgressBar(AnimationWidget):
         self.bg_brush = wx.Brush(style.bg)
 
     def draw_content(self, gc: CustomGraphicsContext):
-        timer = Counter(create_start=True)
         w, h = type_cast(tuple[int, int], self.GetClientSize())
         border_width = round(self.style.border.width * SCALE)
         TRANSPARENT_PEN = gc.CreatePen(wx.GraphicsPenInfo(wx.BLACK, border_width, wx.PENSTYLE_TRANSPARENT))
@@ -76,7 +74,6 @@ class ProgressBar(AnimationWidget):
             gc.DrawRoundedRectangle(border_width, border_width,
                                     target_x, h - border_width * 2,
                                     self.style.corner_radius)
-        print(timer.endT())
 
     def update_animation(self):
         self.value_anim.set_range(self.value_anim.value, self.value / self.range)

@@ -119,6 +119,11 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.gc = gc
         self.current_font: wx.Font | None = None
         self.window = gc.GetWindow()
+        top_level = gc.GetWindow().GetTopLevelParent()
+        if hasattr(top_level, "WindowBlurEnabled") and getattr(top_level, "WindowBlurEnabled"):
+            self.enable_transparent_text = True
+        else:
+            self.enable_transparent_text = False
 
     # 为日常调用提供重定向
     def __getattr__(self, name):
@@ -142,6 +147,9 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
     def DrawText(self, string: str, x: float, y: float):
         """通过PIL渲染文字实现绘制无黑边的完全透明度文字"""
+        if not self.enable_transparent_text:
+            self.gc.DrawText(string, x, y)
+            return
         info = self.LoadTextRenderInfo(string, x, y)
 
         if t_info := TheTextCacheManager.get_cache(info):  # 使用已渲染缓存
@@ -156,7 +164,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             offset_pos = info.offset_pos
 
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
-        print(len(TheTextCacheManager.rendered_text_cache))
+        # print(len(TheTextCacheManager.rendered_text_cache))
 
     def LoadTextRenderInfo(self, string: str, x: float, y: float):
         wx_font = self.current_font if self.current_font else self.window.GetFont()
@@ -167,9 +175,10 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 def get_offset(border_width: float):
     if border_width == 1.0:
         return 0
-    elif 1.5 < border_width % 2.0 < 2.0 or 0.0 < border_width % 2.0 < 0.5:
-        return border_width / 2
-    return border_width // 2
+    return border_width / 2
+    # elif 1.5 < border_width % 2.0 < 2.0 or 0.0 < border_width % 2.0 < 0.5:
+    #     return border_width / 2
+    # return border_width // 2
 
 
 def ARC(angle: float):
@@ -182,8 +191,10 @@ class GCRender:
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
         # timer = Counter(create_start=True)
         window = gc.GetWindow()
-        font = ImageFont.truetype("C:\Windows\Fonts\msyh.ttc", wx_font.GetPixelSize().GetHeight())
+        font = ImageFont.truetype("C:\Windows\Fonts\msyh.ttc", wx_font.GetPointSize() // 0.75)
         left, top, right, bottom = font.getbbox(info.text)
+        if left == top == right == bottom == 0:
+            return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
         image = Image.new("RGBA", typing.cast(tuple[int, int], (right - left, bottom)))
         draw = ImageDraw.Draw(image)
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
@@ -192,7 +203,7 @@ class GCRender:
         wx_image = PilImg2WxImg(image)
         # print(gc.GetWindow().__class__.__name__, timer.endT())
         return (
-            gc.CreateBitmap(wx_image.ConvertToBitmap()),
+            gc.CreateBitmapFromImage(wx_image),
             typing.cast(tuple[int, int], wx_image.GetSize().Get())
         )
 
