@@ -1,14 +1,16 @@
+from ctypes import wintypes
+
 import wx
 
-from .lib.dwm import *
+from cwx.lib.dwm import *
 
 
-def blur_window(window: wx.TopLevelWindow, enable: bool = True,
+def blur_window(hwnd: int, enable: bool = True,
                 color: tuple[int, int, int, int] | None = (0, 173, 226, 40),
                 accent_state: int = ACCENT_STATE.ACCENT_ENABLE_ACRYLICBLURBEHIND):
+    """对一个窗口应用模糊效果, Win10+"""
     if color is None:
         color = (0, 0, 0, 0)  # 完全透明色
-    hwnd = window.GetHandle()
 
     # 模糊透明效果
     bb = DWM_BLURBEHIND(
@@ -32,3 +34,15 @@ def blur_window(window: wx.TopLevelWindow, enable: bool = True,
     # 拓展标题栏效果至客户区/标题栏
     margins = MARGINS(-1, -1, -1, -1) if enable else MARGINS(0, 0, 0, 0)
     DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(margins))
+
+
+def set_caption_color(hwnd: int, color: tuple[int, int, int] | None = None):
+    if color is None:
+        color = (0, 0, 0)  # 完全透明色
+
+    color_ref = wintypes.RGB(*color)
+    DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_CAPTION_COLOR, color_ref)
+
+def set_frame_dark(hwnd: int, is_dark: bool = True):
+    DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.c_int(1 if is_dark else 0))
+

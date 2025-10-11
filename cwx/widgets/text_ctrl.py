@@ -74,7 +74,7 @@ class TextCtrl(AnimationWidget):
         self.select_bg_brush = wx.Brush(style.select_bg)
         self.cursor_pen = wx.GraphicsPenInfo(style.cursor, SCALE)
         self.border_pen = wx.GraphicsPenInfo(style.border, style.border_width, style.border_style)
-        if not hasattr(self, "init_style"):
+        if not self.initializing_style:
             self.border_width.set_range(style.border_width, style.active_border_width)
             self.border_tl_color.set_color(style.border, style.active_tl_border)
             self.border_br_color.set_color(style.border, style.active_br_border)

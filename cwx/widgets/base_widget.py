@@ -33,13 +33,19 @@ class Widget(wx.Window):
     """
     gen_style: Style  # 主题
     style: WidgetStyle  # 组件自有样式
+    initializing_style: bool = False  # 指示是否正在初始化组件样式
+
+    init_wnd: bool = True  # 指示是否初始化wx.Window类
+    enable_double_buffer: bool = True
 
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
-        super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW)
-        super().SetBackgroundColour(wx.BLACK)
-        # self.SetDoubleBuffered(True)
+        if self.init_wnd:
+            super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW)
+        # 确保颜色可以被继承
+        super().SetBackgroundColour(parent.GetBackgroundColour())
+        self.SetDoubleBuffered(self.enable_double_buffer)
 
-        if isinstance(parent, Widget):
+        if hasattr(parent, "gen_style"):
             self.gen_style = parent.gen_style
         else:
             self.gen_style = Style()
@@ -47,9 +53,9 @@ class Widget(wx.Window):
             self.style = widget_style
         else:
             self.style = WidgetStyle.load(self.gen_style)
-        setattr(self, "init_style", True)
+        self.initializing_style = True
         self.load_style(self.gen_style)
-        delattr(self, "init_style")
+        self.initializing_style = False
         self.Bind(wx.EVT_SIZE, self.on_size)
         self.Bind(wx.EVT_PAINT, self.on_paint)
 
@@ -111,6 +117,12 @@ class Widget(wx.Window):
         self.gen_style = style
         self.load_widget_style(self.translate_style(style))
 
+        if self.initializing_style:
+            return
+        for child in self.GetChildren():
+            if hasattr(child, "load_style") and hasattr(child.load_style, "__call__"):
+                child.load_style(style)
+
     @staticmethod
     def translate_style(style: Style) -> WidgetStyle:
         """
@@ -125,8 +137,8 @@ class Widget(wx.Window):
         """
         self.load_style(event.gen_style)
         for child in self.GetChildren():
-            if hasattr(child, "update_style") and hasattr(child.update_style, "__call__"):
-                child.update_style(event.gen_style)
+            if hasattr(child, "load_style") and hasattr(child.load_style, "__call__"):
+                child.load_style(event.gen_style)
 
     def load_widget_style(self, style: WidgetStyle):
         """

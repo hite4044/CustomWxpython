@@ -26,7 +26,9 @@ class DWM_SYSTEMBACKDROP_TYPE:
 
 # noinspection PyPep8Naming,SpellCheckingInspection
 class DWMWINDOWATTRIBUTE:
+    DWMWA_USE_IMMERSIVE_DARK_MODE = 20
     DWMWA_WINDOW_CORNER_PREFERENCE = 33
+    DWMWA_CAPTION_COLOR = 35
     DWMWA_SYSTEMBACKDROP_TYPE = 38
 
 
@@ -110,7 +112,11 @@ except OSError:
     pass
 
 
-def DwmSetWindowAttribute(hwnd: int, dw_attr: int, pw_attr: ctypes.c_void_p, cb_attr: int) -> int:
+def DwmSetWindowAttribute(hwnd: int, dw_attr: int, obj) -> int:
+    return H_DwmSetWindowAttribute(hwnd, dw_attr, ctypes.byref(obj), ctypes.sizeof(obj))
+
+
+def H_DwmSetWindowAttribute(hwnd: int, dw_attr: int, pw_attr: ctypes.c_void_p, cb_attr: int) -> int:
     return rawDwmSetWindowAttribute(hwnd, dw_attr, pw_attr, cb_attr)
 
 

@@ -1,12 +1,31 @@
 from dataclasses import dataclass
+from enum import Flag, auto
 
 from .color import *
 
 
-class Style:
-    def __init__(self):
-        self.colors = Colors.default()
 
+class StyleType(Flag):
+    LIGHT = auto()
+    DARK = auto()
+
+
+class Style:
+    default_style: 'WidgetStyle'
+    btn_style: 'BtnStyle'
+    textctrl_style: 'TextCtrlStyle'
+    static_line_style: 'StaticLineStyle'
+    progress_bar_style: 'ProgressBarStyle'
+
+    def __init__(self, colors: Colors | None = None, style_type: StyleType = StyleType.LIGHT):
+        if colors is None:
+            colors = Colors.default()
+        self.colors = colors
+        self.style_type = style_type
+
+        self.load()
+
+    def load(self):
         self.default_style = EmptyStyle.load(self)
         self.btn_style = BtnStyle.load(self)
         self.textctrl_style = TextCtrlStyle.load(self)
@@ -14,11 +33,39 @@ class Style:
         self.progress_bar_style = ProgressBarStyle.load(self)
 
 
+class DefaultStyleCls:
+    """
+    默认主题, 包含亮色+暗色
+    """
+
+    @property
+    def LIGHT(self) -> Style:
+        colors = Colors.default()
+        colors.bg = wx.WHITE
+        colors.fg = wx.BLACK
+        return Style(colors, StyleType.LIGHT)
+
+    @property
+    def DARK(self) -> Style:
+        colors = Colors.default()
+        colors.bg = wx.BLACK
+        colors.fg = wx.WHITE
+        return Style(colors, StyleType.DARK)
+
+    @property
+    def DEFAULT(self) -> Style:
+        return self.DARK if wx.SystemSettings.GetAppearance().IsDark() else self.LIGHT
+
+
+DefaultStyle = DefaultStyleCls()
+
+
 class WidgetStyle:
     """
     用于记录组件绘制的颜色、边框等信息
     Including information about widget's drawing, such as color, border
     """
+
     def __init__(self, fg: wx.Colour = wx.WHITE, bg: wx.Colour = wx.BLACK):
         self.fg = fg
         self.bg = bg

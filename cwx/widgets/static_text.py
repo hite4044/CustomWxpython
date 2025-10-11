@@ -9,7 +9,6 @@ from ..style import WidgetStyle
 
 class StaticText(Widget):
     style: WidgetStyle
-    text_color: wx.Colour
     text_font: wx.GraphicsFont
 
     def __init__(self, parent: wx.Window, label: str, widget_style: WidgetStyle = None):
@@ -23,10 +22,6 @@ class StaticText(Widget):
         self.SetSize((width, height))
         self.SetMinSize((width, height))
 
-    def load_widget_style(self, style: WidgetStyle):
-        super().load_widget_style(style)
-        self.text_color = style.fg
-
     def draw_content(self, gc: CustomGraphicsContext):
-        gc.SetFont(gc.CreateFont(self.GetFont(), col=wx.Colour(255, 255, 255)))
+        gc.SetFont(gc.CreateFont(self.GetFont(), col=self.style.fg))
         gc.DrawText(self.GetLabel(), 0, 0)
