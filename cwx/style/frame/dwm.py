@@ -76,7 +76,7 @@ class DWM_BLURBEHIND(ctypes.Structure):
 
 # noinspection PyPep8Naming,SpellCheckingInspection
 class WINDOW_COMPOSITION_ATTRIB_DATA(ctypes.Structure):
-    def __init__(self, Attrib: int, pvData: ctypes.POINTER, cbData: int):
+    def __init__(self, Attrib: int, pvData, cbData: int):
         super().__init__(Attrib, ctypes.cast(pvData, ctypes.c_void_p), cbData)
 
     _fields_ = [
@@ -100,33 +100,31 @@ class ACCENT_POLICY(ctypes.Structure):
 
 
 ## Function Define ##
-rawDwmSetWindowAttribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
-try:
-    rawDwmExtendFrameIntoClientArea = ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea
-    rawDwmEnableBlurBehindWindow = ctypes.windll.dwmapi.DwmEnableBlurBehindWindow
-except OSError:
-    pass
-try:
-    rawSetWindowCompositionAttribute = ctypes.windll.user32.SetWindowCompositionAttribute
-except OSError:
-    pass
+dwmapi = ctypes.WinDLL("dwmapi")
+user32 = ctypes.WinDLL("user32")
 
 
-def DwmSetWindowAttribute(hwnd: int, dw_attr: int, obj) -> int:
-    return H_DwmSetWindowAttribute(hwnd, dw_attr, ctypes.byref(obj), ctypes.sizeof(obj))
+def RAISE_FAILED(func, *args):
+    ret = func(*args)
+    if ret != 0:
+        raise ctypes.WinError()
+    return 0
+
+def DwmSetWindowAttribute(hwnd: int, dw_attr: int, obj):
+    return RAISE_FAILED(dwmapi.DwmSetWindowAttribute, hwnd, dw_attr, ctypes.byref(obj), ctypes.sizeof(obj))
 
 
-def H_DwmSetWindowAttribute(hwnd: int, dw_attr: int, pw_attr: ctypes.c_void_p, cb_attr: int) -> int:
-    return rawDwmSetWindowAttribute(hwnd, dw_attr, pw_attr, cb_attr)
+def DwmExtendFrameIntoClientArea(hwnd: int, enable: bool):
+    if enable:
+        margins = MARGINS(-1, -1, -1, -1)
+    else:
+        margins = MARGINS(0, 0, 0, 0)
+    return RAISE_FAILED(dwmapi.DwmExtendFrameIntoClientArea, hwnd, ctypes.byref(margins))
 
 
-def DwmExtendFrameIntoClientArea(hwnd: int, pw_attr: ctypes.POINTER(MARGINS)) -> int:
-    return rawDwmExtendFrameIntoClientArea(hwnd, pw_attr)
+def DwmEnableBlurBehindWindow(hwnd: int, bb: DWM_BLURBEHIND):
+    return RAISE_FAILED(dwmapi.DwmEnableBlurBehindWindow, hwnd, ctypes.byref(bb))
 
 
-def DwmEnableBlurBehindWindow(hwnd: int, pw_attr: ctypes.POINTER(DWM_BLURBEHIND)) -> int:
-    return rawDwmEnableBlurBehindWindow(hwnd, pw_attr)
-
-
-def SetWindowCompositionAttribute(hwnd: int, pw_attr: ctypes.POINTER(WINDOW_COMPOSITION_ATTRIB_DATA)) -> int:
-    return rawSetWindowCompositionAttribute(hwnd, pw_attr)
+def SetWindowCompositionAttribute(hwnd: int, attr: WINDOW_COMPOSITION_ATTRIB_DATA) -> bool:
+    return user32.SetWindowCompositionAttribute(hwnd, ctypes.byref(attr))

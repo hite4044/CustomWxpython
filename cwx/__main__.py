@@ -1,6 +1,6 @@
 from time import perf_counter
 
-from cwx import DefaultStyle
+from cwx import DefaultStyle, AccentState, BackdropType
 from cwx.font import ft
 
 timer = perf_counter()
@@ -12,7 +12,10 @@ faulthandler.enable()
 
 class Frame(cwx.Frame):
     def __init__(self):
-        super().__init__(None, -1, "Custom Wxpython", size=(700, 500), gen_style=DefaultStyle.DARK)
+        super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
+        style= DefaultStyle.DEFAULT
+        style.frame_style.backdrop_type = BackdropType.MICA_ALT
+        self.load_style(style)
         # self.load_style(DefaultStyle.DARK)
         # self.EnableWindowBlur(False)
         # self.SetBackgroundColour(wx.WHITE)

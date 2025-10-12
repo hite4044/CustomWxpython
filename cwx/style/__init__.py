@@ -1,36 +1,51 @@
 from dataclasses import dataclass
-from enum import Flag, auto
 
 from .color import *
-
-
-
-class StyleType(Flag):
-    LIGHT = auto()
-    DARK = auto()
+from .frame.struct import *
+from cwx.lib.settings import GlobalSettings
+from cwx.style.frame.dwm import DWM_SYSTEMBACKDROP_TYPE, ACCENT_STATE
 
 
 class Style:
     default_style: 'WidgetStyle'
+    frame_style: 'FrameStyle'
     btn_style: 'BtnStyle'
     textctrl_style: 'TextCtrlStyle'
     static_line_style: 'StaticLineStyle'
     progress_bar_style: 'ProgressBarStyle'
 
-    def __init__(self, colors: Colors | None = None, style_type: StyleType = StyleType.LIGHT):
+    def __init__(self, colors: Colors | None = None):
         if colors is None:
             colors = Colors.default()
         self.colors = colors
-        self.style_type = style_type
 
         self.load()
 
     def load(self):
         self.default_style = EmptyStyle.load(self)
+        self.frame_style = FrameStyle.load(self)
         self.btn_style = BtnStyle.load(self)
         self.textctrl_style = TextCtrlStyle.load(self)
         self.static_line_style = StaticLineStyle.load(self)
         self.progress_bar_style = ProgressBarStyle.load(self)
+
+    @staticmethod
+    def is_dark():
+        return wx.SystemSettings.GetAppearance().IsDark()
+
+    def set_as_light(self):
+        self.colors.bg = wx.Colour(240, 240, 240)
+        self.colors.fg = wx.BLACK
+        self.load()
+        self.frame_style.caption_theme = CaptionTheme.LIGHT
+        return self
+
+    def set_as_dark(self):
+        self.colors.bg = wx.BLACK
+        self.colors.fg = wx.WHITE
+        self.load()
+        self.frame_style.caption_theme = CaptionTheme.DARK
+        return self
 
 
 class DefaultStyleCls:
@@ -40,17 +55,11 @@ class DefaultStyleCls:
 
     @property
     def LIGHT(self) -> Style:
-        colors = Colors.default()
-        colors.bg = wx.WHITE
-        colors.fg = wx.BLACK
-        return Style(colors, StyleType.LIGHT)
+        return Style().set_as_light()
 
     @property
     def DARK(self) -> Style:
-        colors = Colors.default()
-        colors.bg = wx.BLACK
-        colors.fg = wx.WHITE
-        return Style(colors, StyleType.DARK)
+        return Style().set_as_dark()
 
     @property
     def DEFAULT(self) -> Style:
@@ -84,6 +93,31 @@ class WidgetStyle:
 
 class EmptyStyle(WidgetStyle):
     pass
+
+
+class FrameStyle(WidgetStyle):
+    def __init__(self, fg: wx.Colour, bg: wx.Colour,
+                 caption_theme: CaptionTheme,
+                 backdrop_type: BackdropType,
+                 accent_type: AccentState,
+                 accent_color: wx.Colour | None = None):
+        super().__init__(fg, bg)
+        self.caption_theme = caption_theme
+        self.backdrop_type = backdrop_type
+
+        self.accent_type = accent_type
+        self.accent_color = accent_color
+
+    @classmethod
+    def load(cls, style: Style) -> 'FrameStyle':
+        colors = style.colors
+        return cls(
+            fg=colors.fg,
+            bg=colors.bg,
+            caption_theme=GlobalSettings.default_caption_theme,
+            backdrop_type=GlobalSettings.default_backdrop_type,
+            accent_type=GlobalSettings.default_frame_accent,
+        )
 
 
 @dataclass

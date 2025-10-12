@@ -2,10 +2,13 @@ import typing
 
 import wx
 
-from cwx import Widget, CustomGraphicsContext, WidgetStyle, Style, StyleType
-from cwx.lib.dwm import ACCENT_STATE
+from cwx import WidgetStyle
+from cwx.render import CustomGraphicsContext
+from cwx.widgets import Widget
+from cwx.style import FrameStyle, Style, CaptionTheme, AccentState
 from cwx.lib.settings import GlobalSettings
-from cwx.lib.window_style import blur_window, set_caption_color, set_frame_dark
+from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
+    set_window_backdrop, DwmExtendFrameIntoClientArea
 
 
 class TopLevelWrapper(Widget):
@@ -19,18 +22,19 @@ class TopLevelWrapper(Widget):
         if gen_style:
             self.gen_style = gen_style
 
-        Widget.__init__(self, self)
         self.WindowBlurEnabled = False
+        Widget.__init__(self, self)
 
-        if (self.init_with_blur is True) or (self.init_with_blur is None and GlobalSettings.auto_blur_toplevel):
-            self.EnableWindowBlur()
+        if (self.init_with_blur is True) or (self.init_with_blur is None and GlobalSettings.default_backdrop_type != BackdropType.NONE):
+            self.EnableWindowComposition()
 
-    def EnableWindowBlur(self,
-                         enable: bool = True,
-                         color: tuple[int, int, int, int] | tuple[int, int, int] | wx.Colour | None = None,
-                         accent_state: int = ACCENT_STATE.ACCENT_ENABLE_ACRYLICBLURBEHIND):
+    def EnableWindowComposition(self,
+                                enable: bool = True,
+                                color: tuple[int, int, int, int] | tuple[int, int, int] | wx.Colour | None = None,
+                                accent_state: AccentState = AccentState.BLUR):
         """启用窗口透明, 仅在Win10+起效"""
-        self.WindowBlurEnabled = enable
+        if not self.WindowBlurEnabled and enable:
+            self.WindowBlurEnabled = True
 
         if isinstance(color, wx.Colour):
             f_color = (color.Red(), color.Green(), color.Blue(), color.Alpha())
@@ -38,22 +42,36 @@ class TopLevelWrapper(Widget):
             f_color = color + ((50,) if len(color) == 3 else ())
         else:
             f_color = None
-        blur_window(self.GetHandle(), enable, f_color, accent_state=accent_state)
+        set_window_composition(self.GetHandle(), enable, f_color, accent_state=accent_state.value)
+        return enable
 
-    def SetCaptionDark(self, is_dark: bool = True):
+    def SetBackdropType(self, backdrop_type: BackdropType):
+        """设置窗口背景类型"""
+        enable = backdrop_type not in (BackdropType.AUTO, BackdropType.NONE)
+        DwmExtendFrameIntoClientArea(self.GetHandle(), enable)
+        set_window_backdrop(self.GetHandle(), backdrop_type.value)
+        return enable
+
+    def SetCaptionTheme(self, theme: CaptionTheme):
         """如果系统允许了应用深色模式, 设置窗口标题栏为深色"""
-        set_frame_dark(self.GetHandle(), is_dark)
+        set_frame_dark(self.GetHandle(), Style.is_dark() if theme == CaptionTheme.AUTO else (theme == CaptionTheme.DARK))
 
     def SetCaptionColor(self, color: wx.Colour):
         """设置标题栏颜色"""
         set_caption_color(self.GetHandle(), typing.cast(tuple[int, int, int], color.Get()))
 
-    def load_style(self, style: Style):
-        self.SetCaptionDark(style.style_type == StyleType.DARK)
-        super().load_style(style)
+    @staticmethod
+    def translate_style(style: Style) -> WidgetStyle:
+        return style.frame_style
 
-    def load_widget_style(self, style: WidgetStyle):
+    def load_widget_style(self, style: FrameStyle):
         super().load_widget_style(style)
+
+        self.SetCaptionTheme(style.caption_theme)
+        e1 = self.EnableWindowComposition(style.accent_type != AccentState.DISABLE, style.accent_color, style.accent_type)
+        e2 = self.SetBackdropType(style.backdrop_type)
+        self.WindowBlurEnabled = e1 or e2
+
         super().SetForegroundColour(style.fg)
         super().SetBackgroundColour(style.bg)
 
