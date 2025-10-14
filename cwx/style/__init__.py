@@ -37,14 +37,14 @@ class Style:
         self.colors.bg = wx.Colour(240, 240, 240)
         self.colors.fg = wx.BLACK
         self.load()
-        self.frame_style.caption_theme = CaptionTheme.LIGHT
+        self.frame_style.caption_theme = FrameTheme.LIGHT
         return self
 
     def set_as_dark(self):
         self.colors.bg = wx.BLACK
         self.colors.fg = wx.WHITE
         self.load()
-        self.frame_style.caption_theme = CaptionTheme.DARK
+        self.frame_style.caption_theme = FrameTheme.DARK
         return self
 
 
@@ -96,8 +96,11 @@ class EmptyStyle(WidgetStyle):
 
 
 class FrameStyle(WidgetStyle):
+    """
+    accent_state: 人
+    """
     def __init__(self, fg: wx.Colour, bg: wx.Colour,
-                 caption_theme: CaptionTheme,
+                 caption_theme: FrameTheme,
                  backdrop_type: BackdropType,
                  accent_type: AccentState,
                  accent_color: wx.Colour | None = None):
@@ -105,8 +108,8 @@ class FrameStyle(WidgetStyle):
         self.caption_theme = caption_theme
         self.backdrop_type = backdrop_type
 
-        self.accent_type = accent_type
-        self.accent_color = accent_color
+        self.accent_state = accent_type
+        self.accent_color: wx.Colour | None = accent_color  # 颜色记得带透明度, CT.with_alpha
 
     @classmethod
     def load(cls, style: Style) -> 'FrameStyle':

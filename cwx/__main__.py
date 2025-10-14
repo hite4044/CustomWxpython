@@ -1,6 +1,7 @@
 from time import perf_counter
 
-from cwx import DefaultStyle, AccentState, BackdropType
+from cwx import DefaultStyle, AccentState, BackdropType, GlobalSettings, FrameTheme, TheDefaultColors, CT, \
+    TopWindowCanvas
 from cwx.font import ft
 
 timer = perf_counter()
@@ -13,20 +14,17 @@ faulthandler.enable()
 class Frame(cwx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
-        style= DefaultStyle.DEFAULT
-        style.frame_style.backdrop_type = BackdropType.MICA_ALT
+        style = DefaultStyle.DEFAULT
+        style.frame_style.frame_theme = FrameTheme.DARK
+        style.frame_style.accent_state = AccentState.BLUR
         self.load_style(style)
-        # self.load_style(DefaultStyle.DARK)
-        # self.EnableWindowBlur(False)
-        # self.SetBackgroundColour(wx.WHITE)
 
         self.SetFont(ft(9))
-        # self.SetBackgroundColour(wx.BLACK)
         # self.canvas = TopWindowCanvas(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        st = cwx.StaticText(self, "       Custom Wxpython   hite404")
+        st = cwx.StaticText(self, label="Custom Wxpython hite404\nPython is the best language.\nBy hite404")
         sizer.Add(st)
 
         sizer.Add(cwx.Button(self, "点我啊!"), 0)
@@ -41,7 +39,7 @@ class Frame(cwx.Frame):
         sizer.AddSpacer(5)
 
         bar = cwx.ProgressBar(self, value=5)
-        bar.load_widget_style(bar.style.赛博朋克)
+        # bar.load_widget_style(bar.style.赛博朋克)
         def func1():
             bar.SetValue(30)
             wx.CallLater(3000, func2)

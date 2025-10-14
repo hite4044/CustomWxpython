@@ -3,13 +3,13 @@ from typing import cast as type_cast
 import wx
 
 from .base_widget import Widget
-from ..render import CustomGraphicsContext
-from ..style import WidgetStyle
+from cwx.lib.perf import Counter
+from cwx.render import CustomGraphicsContext
+from cwx.style import WidgetStyle
 
 
 class StaticText(Widget):
     style: WidgetStyle
-    text_font: wx.GraphicsFont
 
     def __init__(self, parent: wx.Window, label: str, widget_style: WidgetStyle = None):
         super().__init__(parent, widget_style=widget_style)
@@ -17,11 +17,14 @@ class StaticText(Widget):
 
     def SetLabel(self, label: str):
         super().SetLabel(label)
-        dc = wx.ClientDC(self)
-        width, height = type_cast(tuple, dc.GetTextExtent(label))
+        dc = wx.GraphicsContext.Create(self)
+        dc.SetFont(self.GetFont(), wx.BLACK)
+        width, height, _, _ = type_cast(tuple, dc.GetFullTextExtent(label))
         self.SetSize((width, height))
         self.SetMinSize((width, height))
 
     def draw_content(self, gc: CustomGraphicsContext):
         gc.SetFont(gc.CreateFont(self.GetFont(), col=self.style.fg))
+        timer = Counter(create_start=True)
         gc.DrawText(self.GetLabel(), 0, 0)
+        print(timer.endT())

@@ -33,6 +33,19 @@ __all__ = [
     "TextCtrlStyle",
     "ProgressBarStyle",
 
+    # Color
+    "Colors",
+    "EasyColor",
+    "TransformableColor",
+    "ColorTransformer",
+    "CT",
+    "DefaultColors",
+    "TheDefaultColors",
+    "GradientDir",
+    "GradientColor",
+    "GradientPen",
+    "GradientBrush",
+
     # Animation,
     "Animation",
     "AnimationGroup",

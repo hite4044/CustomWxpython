@@ -1,8 +1,8 @@
-from ..style.frame.struct import BackdropType, AccentState, CaptionTheme
+from ..style.frame.struct import BackdropType, AccentState, FrameTheme
 
 
 class GlobalSettings:
     """CustomWxpython的全局设置"""
-    default_caption_theme: CaptionTheme = CaptionTheme.AUTO
-    default_frame_accent: AccentState = AccentState.DISABLE
-    default_backdrop_type: BackdropType = BackdropType.NONE
+    default_caption_theme: FrameTheme = FrameTheme.AUTO
+    default_frame_accent: AccentState = AccentState.DONT_SET
+    default_backdrop_type: BackdropType = BackdropType.DONT_SET

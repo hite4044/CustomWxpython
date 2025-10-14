@@ -150,10 +150,10 @@ class Widget(wx.Window):
     def on_paint(self, _):
         dc = wx.PaintDC(self)
 
-        # timer = Counter(create_start=True)
+        timer = Counter(create_start=True)
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(dc))
         self.draw_content(gc)
-        # print(f"{self.__class__.__name__}: {timer.endT()}")
+        print(f"{self.__class__.__name__}: {timer.endT()}")
 
     def draw_content(self, gc: CustomGraphicsContext):
         pass
@@ -260,6 +260,7 @@ class TopWindowCanvas:
         print(timer.endT())
 
     def draw_wnd(self, gc: CustomGraphicsContext, root_window: wx.Window, window: Widget):
+        gc.GetWindow = lambda: root_window
         # 计算位置
         root_pos = self.pos_test_window.GetScreenPosition()
         wnd_pos, size = window.GetScreenPosition(), window.GetClientSize().Get()
@@ -291,7 +292,9 @@ class TopWindowCanvas:
             # print("Redraw", window.__class__.__name__)
             image = wx.Image(*size, clear=True)
             image.SetAlphaBuffer(self.alpha_buffer)
-            wnd_gc = CustomGraphicsContext(wx.GraphicsContext.Create(image))
+            low_gc = wx.GraphicsContext.Create(image)
+            low_gc.GetWindow = lambda: root_window
+            wnd_gc = CustomGraphicsContext(low_gc)
             window.draw_content(wnd_gc)
             wnd_gc.Destroy()
             gc_bitmap = gc.CreateBitmapFromImage(image)

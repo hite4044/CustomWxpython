@@ -32,20 +32,9 @@ def get_windows_theme_color():  # 蓝色
         return 0, 111, 196  # 如果获取颜色失败, 返回默认颜色 (蓝色)
 
 
-class LuminanceColor:
-    def __init__(self, color: tuple[int, int, int] | wx.Colour):
-        if isinstance(color, wx.Colour):
-            color = color.GetRed(), color.GetGreen(), color.GetBlue()
-        self.color = colour.Color(rgb=(color[0] / 255, color[1] / 255, color[2] / 255))
-        self.base = self.color.get_luminance()
-
-    def add_luminance(self, value: float):
-        self.color.set_luminance(max(min(self.base + value, 1), 0))
-        color: tuple[int, int, int] = self.color.get_rgb()
-        return wx.Colour((int(color[0] * 255), int(color[1] * 255), int(color[2] * 255)))
-
-
 class EasyColor(colour.Color):
+    """colour.Color的更易于使用的版本"""
+
     def __init__(self, color: tuple):
         super().__init__(rgb=(color[0] / 255, color[1] / 255, color[2] / 255))
 
@@ -99,7 +88,7 @@ class TC(TransformableColor):
     pass
 
 
-COLOR_LEVEL = 0.04
+LUM_LEVEL = 0.04  # 亮度等级的计算
 
 
 class ColorTransformer:
@@ -108,39 +97,43 @@ class ColorTransformer:
         return wx.Colour(color.Red(), color.Green(), color.Blue(), alpha)
 
     @staticmethod
-    def add_luminance(color: wx.Colour, luminance: float):
-        color = LuminanceColor(color)
-        return color.add_luminance(luminance)
+    def add_luminance(wx_color: wx.Colour, luminance: float):
+        """增加颜色"""
+        color = colour.Color(rgb=(wx_color.GetRed() / 255, wx_color.GetGreen() / 255, wx_color.GetBlue() / 255))
+        base = color.get_luminance()
+        color.set_luminance(max(min(base + luminance, 1), 0))
+        color_tup: tuple[int, int, int] = color.get_rgb()
+        return wx.Colour((int(color_tup[0] * 255), int(color_tup[1] * 255), int(color_tup[2] * 255)))
 
     @staticmethod
     def highlight(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, COLOR_LEVEL)
+        return ColorTransformer.add_luminance(color, LUM_LEVEL)
 
     # light level
 
     @staticmethod
     def light1(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, COLOR_LEVEL)
+        return ColorTransformer.add_luminance(color, LUM_LEVEL)
 
     @staticmethod
     def light2(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, COLOR_LEVEL * 2)
+        return ColorTransformer.add_luminance(color, LUM_LEVEL * 2)
 
     @staticmethod
     def light3(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, COLOR_LEVEL * 3)
+        return ColorTransformer.add_luminance(color, LUM_LEVEL * 3)
 
     @staticmethod
     def dark1(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, -COLOR_LEVEL)
+        return ColorTransformer.add_luminance(color, -LUM_LEVEL)
 
     @staticmethod
     def dark2(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, -COLOR_LEVEL * 2)
+        return ColorTransformer.add_luminance(color, -LUM_LEVEL * 2)
 
     @staticmethod
     def dark3(color: wx.Colour):
-        return ColorTransformer.add_luminance(color, -COLOR_LEVEL * 3)
+        return ColorTransformer.add_luminance(color, -LUM_LEVEL * 3)
 
 
 class CT(ColorTransformer):
@@ -150,7 +143,7 @@ class CT(ColorTransformer):
 
 class DefaultColors:
     """
-    系统默认颜色, 需要在wx.App初始化后使用
+    系统默认颜色, 需要在wx.App初始化后使用, 使用已创建实例 TheDefaultColors
     System default color, need initial wx.App instance before use.
     """
 
@@ -168,15 +161,17 @@ class Colors:
                  fg: wx.Colour,
                  bg: wx.Colour,
                  border: wx.Colour,
-                 input_fg: wx.Colour,
                  input_bg: wx.Colour):
         self.primary = primary
         self.secondary = secondary
         self.fg = fg
         self.bg = bg
         self.border = border
-        self.input_fg = input_fg
         self.input_bg = input_bg
+
+    @property
+    def input_fg(self):
+        return self.fg
 
     @staticmethod
     def default():
@@ -186,12 +181,11 @@ class Colors:
             fg=wx.Colour(255, 255, 255),
             bg=wx.BLACK,
             border=wx.Colour(85, 85, 85),
-            input_fg=wx.Colour(255, 255, 255),
             input_bg=wx.Colour(0, 0, 0, 40)
         )
 
 
-class Direction(Enum):
+class GradientDir(Enum):
     HORIZONTAL = 4
     VERTICAL = 8
     TOP_LEFT_CORNER = 12  # 从左上角开始 (到右下角) \ 渐变至左上角
@@ -205,30 +199,29 @@ class Direction(Enum):
 
 class GradientColor(wx.Colour):
     """
-    高度自定义的颜色, 支持多种渐变设定
+    渐变颜色, 快捷使用多种渐变设定
     """
 
     def __init__(self,
                  color: tuple[int, ...] | wx.Colour,
                  stop_color: tuple[int, ...] | wx.Colour = None,
                  gradient_type: wx.GradientType = wx.GRADIENT_NONE,
-                 direction: Direction | int = Direction.HORIZONTAL,
+                 direction: GradientDir | int = GradientDir.HORIZONTAL,
                  stops: list[tuple[float, tuple[int, int, int] | wx.Colour]] = None):
+        """
+        :param color: 基础颜色
+        :param stop_color: 渐变停止颜色
+        :param gradient_type: 渐变类型, 线性或者圆形
+        :param direction: 渐变方向
+        :param stops: 渐变途径点
+        """
         super().__init__(color)
         self.gradient_type = gradient_type
-        self.direction: Direction | int = direction
+        self.direction: GradientDir | int = direction
 
-        self.gradient_stops = wx.GraphicsGradientStops(color, stop_color if stop_color is not None else color)
+        self.gradient_stops = wx.GraphicsGradientStops(color, color if stop_color is None else stop_color)
         for percent, stop_color in (stops if stops else []):
             self.gradient_stops.Add(wx.Colour(stop_color), percent)
-
-    @property
-    def color(self) -> wx.Colour:
-        return self
-
-    @color.setter
-    def color(self, color: wx.Colour):
-        self.SetRGBA(color.GetRGBA())
 
     @property
     def stop_color(self) -> wx.Colour:
@@ -261,7 +254,7 @@ class GradientPen(GradientColor):
                  color: tuple[int, int, int] | wx.Colour,
                  stop_color: tuple[int, int, int] | wx.Colour = None,
                  gradient_type: int = wx.GRADIENT_LINEAR,
-                 direction: Direction | int = Direction.HORIZONTAL,
+                 direction: GradientDir | int = GradientDir.HORIZONTAL,
                  stops: list[tuple[float, tuple[int, int, int] | wx.Colour]] = None,
                  width: float = 1, pen_style: int = wx.PENSTYLE_SOLID,
 
@@ -310,13 +303,13 @@ class GradientPen(GradientColor):
             if isinstance(self.direction, int) or isinstance(self.direction, float):
                 # center = (size[0] / 2, size[1] / 2)
                 raise NotImplementedError("Not Implemented direction as number")
-            elif self.direction == Direction.HORIZONTAL:
+            elif self.direction == GradientDir.HORIZONTAL:
                 to_pt = (size[0], 0)
-            elif self.direction == Direction.VERTICAL:
+            elif self.direction == GradientDir.VERTICAL:
                 to_pt = (0, size[1])
-            elif self.direction == Direction.TOP_LEFT_CORNER:
+            elif self.direction == GradientDir.TOP_LEFT_CORNER:
                 to_pt = size
-            elif self.direction == Direction.TOP_RIGHT_CORNER:
+            elif self.direction == GradientDir.TOP_RIGHT_CORNER:
                 from_pt = (size[0], 0)
                 to_pt = (0, size[1])
             else:
@@ -327,17 +320,17 @@ class GradientPen(GradientColor):
             gradient_center = (size[0] * self.gradient_from[0], size[1] * self.gradient_from[1])
             if self.gradient_to:
                 stop_pt = (size[0] * self.gradient_to[0], size[1] * self.gradient_to[1])
-            elif self.direction == Direction.HORIZONTAL:
+            elif self.direction == GradientDir.HORIZONTAL:
                 stop_pt = (0, size[1] / 2)
-            elif self.direction == Direction.VERTICAL:
+            elif self.direction == GradientDir.VERTICAL:
                 stop_pt = (size[0] / 2, 0)
-            elif self.direction == Direction.TOP_LEFT_CORNER:
+            elif self.direction == GradientDir.TOP_LEFT_CORNER:
                 stop_pt = (0, 0)
-            elif self.direction == Direction.TOP_RIGHT_CORNER:
+            elif self.direction == GradientDir.TOP_RIGHT_CORNER:
                 stop_pt = (size[0], 0)
-            elif self.direction == Direction.BOTTOM_LEFT_CORNER:
+            elif self.direction == GradientDir.BOTTOM_LEFT_CORNER:
                 stop_pt = (0, size[0])
-            elif self.direction == Direction.BOTTOM_RIGHT_CORNER:
+            elif self.direction == GradientDir.BOTTOM_RIGHT_CORNER:
                 stop_pt = size
             else:
                 raise NotImplementedError(f"Not Implemented direction {self.direction} for radial gradient")
@@ -350,7 +343,7 @@ class GradientBrush(GradientColor):
                  color: tuple[int, int, int] | wx.Colour,  # 主颜色
                  stop_color: tuple[int, int, int] | wx.Colour = None,  # 渐变停止颜色
                  gradient_type: int = wx.GRADIENT_LINEAR,  # 渐变类型
-                 direction: Direction | int = Direction.HORIZONTAL,  # 渐变方向
+                 direction: GradientDir | int = GradientDir.HORIZONTAL,  # 渐变方向
                  stops: dict[float, tuple[int, int, int] | wx.Colour] = None,  # 渐变途径点
                  radius: float = 100,
                  gradient_from: tuple[float, float] | None = None,
@@ -376,8 +369,8 @@ class GradientBrush(GradientColor):
         self.gradient_to = gradient_to
 
     def create_brush(self,
-                         gc: wx.GraphicsContext,
-                         size: tuple[float, float]):
+                     gc: wx.GraphicsContext,
+                     size: tuple[float, float]):
         """
         以渐变颜色创建一个笔刷
         Create a brush with gradient color.
@@ -390,13 +383,13 @@ class GradientBrush(GradientColor):
             if isinstance(self.direction, int) or isinstance(self.direction, float):
                 # center = (size[0] / 2, size[1] / 2)
                 raise NotImplementedError("Not Implemented direction as number")
-            elif self.direction == Direction.HORIZONTAL:
+            elif self.direction == GradientDir.HORIZONTAL:
                 stop_pt = (size[0], 0)
-            elif self.direction == Direction.VERTICAL:
+            elif self.direction == GradientDir.VERTICAL:
                 stop_pt = (0, size[1])
-            elif self.direction == Direction.TOP_LEFT_CORNER:
+            elif self.direction == GradientDir.TOP_LEFT_CORNER:
                 stop_pt = size
-            elif self.direction == Direction.TOP_RIGHT_CORNER:
+            elif self.direction == GradientDir.TOP_RIGHT_CORNER:
                 from_pt = (size[0], 0)
                 stop_pt = (0, size[1])
             else:
@@ -407,17 +400,17 @@ class GradientBrush(GradientColor):
             gradient_center = (size[0] * self.gradient_from[0], size[1] * self.gradient_from[1])
             if self.gradient_to:
                 stop_pt = (size[0] * self.gradient_to[0], size[1] * self.gradient_to[1])
-            elif self.direction == Direction.HORIZONTAL:
+            elif self.direction == GradientDir.HORIZONTAL:
                 stop_pt = (0, size[1] / 2)
-            elif self.direction == Direction.VERTICAL:
+            elif self.direction == GradientDir.VERTICAL:
                 stop_pt = (size[0] / 2, 0)
-            elif self.direction == Direction.TOP_LEFT_CORNER:
+            elif self.direction == GradientDir.TOP_LEFT_CORNER:
                 stop_pt = (0, 0)
-            elif self.direction == Direction.TOP_RIGHT_CORNER:
+            elif self.direction == GradientDir.TOP_RIGHT_CORNER:
                 stop_pt = (size[0], 0)
-            elif self.direction == Direction.BOTTOM_LEFT_CORNER:
+            elif self.direction == GradientDir.BOTTOM_LEFT_CORNER:
                 stop_pt = (0, size[0])
-            elif self.direction == Direction.BOTTOM_RIGHT_CORNER:
+            elif self.direction == GradientDir.BOTTOM_RIGHT_CORNER:
                 stop_pt = size
             else:
                 raise NotImplementedError(f"Not Implemented direction {self.direction} for radial gradient")

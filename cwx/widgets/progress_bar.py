@@ -45,7 +45,6 @@ class ProgressBar(AnimationWidget):
         w, h = type_cast(tuple[int, int], self.GetClientSize())
         border_width = round(self.style.border.width * SCALE)
         TRANSPARENT_PEN = gc.CreatePen(wx.GraphicsPenInfo(wx.BLACK, border_width, wx.PENSTYLE_TRANSPARENT))
-        TRANSPARENT_BRUSH = gc.CreateBrush(wx.Brush(wx.BLACK, wx.BRUSHSTYLE_TRANSPARENT))
 
         # 背景
         gc.SetBrush(gc.CreateBrush(self.bg_brush))

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import wx
 from PIL import ImageFont, Image, ImageDraw
 
+from .lib.perf import Counter
 from .tool.image_pil2wx import PilImg2WxImg
 
 
@@ -176,9 +177,6 @@ def get_offset(border_width: float):
     if border_width == 1.0:
         return 0
     return border_width / 2
-    # elif 1.5 < border_width % 2.0 < 2.0 or 0.0 < border_width % 2.0 < 0.5:
-    #     return border_width / 2
-    # return border_width // 2
 
 
 def ARC(angle: float):
@@ -189,19 +187,24 @@ class GCRender:
     @staticmethod
     def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font) -> \
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
-        # timer = Counter(create_start=True)
         window = gc.GetWindow()
         font = ImageFont.truetype("C:\Windows\Fonts\msyh.ttc", wx_font.GetPointSize() // 0.75)
-        left, top, right, bottom = font.getbbox(info.text)
+
+        # 获取文字大小
+        sm_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+        left, top, right, bottom = sm_draw.multiline_textbbox((0, 0), info.text, font=font)
         if left == top == right == bottom == 0:
             return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
+
+        # 绘制文字
         image = Image.new("RGBA", typing.cast(tuple[int, int], (right - left, bottom)))
         draw = ImageDraw.Draw(image)
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
-        draw.text((-left + info.pos_decimal[0], 0 + info.pos_decimal[1]), info.text, fill=color, font=font)
+        draw.multiline_text((-left + info.pos_decimal[0], 0 + info.pos_decimal[1]),
+                            info.text, fill=color, font=font, spacing=2)
 
+        # 转化并返回
         wx_image = PilImg2WxImg(image)
-        # print(gc.GetWindow().__class__.__name__, timer.endT())
         return (
             gc.CreateBitmapFromImage(wx_image),
             typing.cast(tuple[int, int], wx_image.GetSize().Get())
