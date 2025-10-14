@@ -110,6 +110,7 @@ class FrameStyle(WidgetStyle):
 
         self.accent_state = accent_type
         self.accent_color: wx.Colour | None = accent_color  # 颜色记得带透明度, CT.with_alpha
+        """颜色记得带透明度, CT.with_alpha"""
 
     @classmethod
     def load(cls, style: Style) -> 'FrameStyle':

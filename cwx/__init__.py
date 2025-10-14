@@ -1,15 +1,7 @@
 from .animation import AnimationGroup
 from .font import ft
 from cwx.style.__init__ import *
-from .widgets.animation_widget import *
-from .widgets.base_widget import *
-from .widgets.button import *
-from .widgets.frame import *
-from .widgets.panel import *
-from .widgets.progress_bar import *
-from .widgets.static_line import *
-from .widgets.static_text import *
-from .widgets.text_ctrl import *
+from .widgets import *
 
 __all__ = [
     # Widgets
@@ -22,6 +14,7 @@ __all__ = [
     "StaticLine",
     "StaticText",
     "ProgressBar",
+    "StaticBitmap",
 
     # Style
     "Style",
