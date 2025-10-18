@@ -63,7 +63,7 @@ class Button(AnimationWidget):
             data = self.bg_anim.value
         else:
             return
-        print(f"Lum: {data}", flush=True)
+        # print(f"Lum: {data}", flush=True)
         self.style.bg.reset()
         self.style.bg.add_luminance(data)
         self.bg_brush = wx.Brush(self.style.bg)

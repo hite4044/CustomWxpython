@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import wx
 
-from ..dpi import translate_size
+from ..dpi import translate_size, SCALE
 from ..event import PyCommandEvent
 from ..lib.perf import Counter
 from ..render import CustomGraphicsContext
@@ -56,20 +56,28 @@ class Widget(wx.Window):
         self.initializing_style = True
         self.load_style(self.gen_style)
         self.initializing_style = False
-        self.Bind(wx.EVT_SIZE, self.on_size)
         self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.py_font = parent.GetFont() if hasattr(parent, "GetFont") else None
+        self.last_size = self.GetSize()
 
         TopWindowCanvas.auto_handling_window(self)
-
-    def on_size(self, event: wx.SizeEvent):
-        event.Skip()
-        self.Refresh()
 
     def __hash__(self):
         return hash(self.GetHandle())
 
     def __eq__(self, other):
         return other is self
+
+    def SetFont(self, font: wx.Font):
+        if not hasattr(font, "CWX_RAW_SIZE"):
+            font = wx.Font(font)
+            font.CWX_RAW_SIZE = font.GetPointSize()
+            font.SetPointSize(round(font.GetPointSize() * SCALE))
+        super().SetFont(font)
+        self.py_font = font
+
+    def GetFont(self):
+        return self.py_font if hasattr(self, "py_font") and self.py_font else super().GetFont()
 
     # 一些关于大小设置的DPI替换
     # Some method hook about setting size.

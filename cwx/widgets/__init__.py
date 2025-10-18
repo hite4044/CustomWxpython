@@ -6,5 +6,5 @@ from .panel import *
 from .progress_bar import *
 from .static_line import *
 from .static_text import *
-from .text_ctrl import *
+from .single_line_text_ctrl import *
 from .static_bitmap import *

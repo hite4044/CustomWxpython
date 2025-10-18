@@ -3,7 +3,6 @@ import typing
 import wx
 
 from cwx import WidgetStyle
-from cwx.lib.settings import GlobalSettings
 from cwx.style import FrameStyle, Style, FrameTheme, AccentState
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
@@ -23,6 +22,7 @@ class TopLevelWrapper(Widget):
 
         self.WindowBlurEnabled = False
         Widget.__init__(self, self)
+        # self.Refresh = lambda :None
 
     def EnableWindowComposition(self,
                                 enable: bool = True,

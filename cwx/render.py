@@ -1,12 +1,18 @@
+import ctypes
 import math
+from math import ceil
 import typing
+from ctypes import wintypes
 from dataclasses import dataclass
+from io import BytesIO
 
 import wx
 from PIL import ImageFont, Image, ImageDraw
+from win32.lib.win32con import GDI_ERROR
+from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
-from .lib.perf import Counter
 from .tool.image_pil2wx import PilImg2WxImg
+from .dpi import SCALE
 
 
 @dataclass
@@ -166,6 +172,11 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
         # print(len(TheTextCacheManager.rendered_text_cache))
+    #
+    # def GetPartialTextExtents(self, text: str):
+    #     if not self.enable_transparent_text:
+    #         self.gc.GetPartialTextExtents(text)
+    #         return
 
     def LoadTextRenderInfo(self, string: str, x: float, y: float):
         wx_font = self.current_font if self.current_font else self.window.GetFont()
@@ -183,25 +194,65 @@ def ARC(angle: float):
     return math.pi * 2 * ((angle % 360) / 360)
 
 
+gdi32 = ctypes.WinDLL("gdi32")
+GetFontData = gdi32.GetFontData
+GetFontData.argtypes = [wintypes.HDC, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+GetFontData.restype = wintypes.DWORD
+
+
 class GCRender:
+    FONT_CVT_CACHE: dict[tuple[int, float], ImageFont.FreeTypeFont] = {}
+    @staticmethod
+    def GetFontByHandle(wx_font: wx.Font) -> ImageFont.FreeTypeFont:
+        font_size = (wx_font.GetPointSize() if hasattr(wx_font, "CWX_RAW_SIZE") else wx_font.GetPointSize() * SCALE) / 0.75
+        cache_key = (int(typing.cast(int, wx_font.GetHFONT())), font_size)
+        if cache_key in GCRender.FONT_CVT_CACHE:
+            return GCRender.FONT_CVT_CACHE[cache_key]
+
+        hdc = CreateCompatibleDC(None)
+        SelectObject(hdc, int(typing.cast(int, wx_font.GetHFONT())))
+
+        dwTable = 0x66637474
+        size = GetFontData(hdc, dwTable, 0, 0, 0)
+        if dwTable == GDI_ERROR or size == 0xffffffff:
+            dwTable = 0
+            size = GetFontData(hdc, dwTable, 0, 0, 0)
+        font_buffer = ctypes.create_string_buffer(size)
+        if GetFontData(hdc, dwTable, 0, font_buffer, size) != size:
+            raise Exception("GetFontData error")
+        DeleteDC(hdc)
+
+        # if size < 1024 * 1024 * 100:
+        #     with open("font.ttf", "wb") as f:
+        #         f.write(font_buffer.raw)
+        font_io = BytesIO(font_buffer.raw)
+
+        font = ImageFont.truetype(font_io, font_size)
+        # fixme: 更多的属性设置
+        GCRender.FONT_CVT_CACHE[cache_key] = font
+        return font
+
     @staticmethod
     def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font) -> \
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
         window = gc.GetWindow()
-        font = ImageFont.truetype("C:\Windows\Fonts\msyh.ttc", wx_font.GetPointSize() // 0.75)
+        font = GCRender.GetFontByHandle(wx_font)
 
         # 获取文字大小
+        SPACING = 10 * SCALE
+        OFFSET = 2 * SCALE
         sm_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-        left, top, right, bottom = sm_draw.multiline_textbbox((0, 0), info.text, font=font)
+        left, top, right, bottom = sm_draw.textbbox((0, 0),
+                                                              info.text, font=font, spacing=SPACING)
         if left == top == right == bottom == 0:
             return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
 
         # 绘制文字
-        image = Image.new("RGBA", typing.cast(tuple[int, int], (right - left, bottom)))
+        image = Image.new("RGBA", typing.cast(tuple[int, int], (ceil(right - left), ceil(bottom - top + OFFSET))))
         draw = ImageDraw.Draw(image)
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
-        draw.multiline_text((-left + info.pos_decimal[0], 0 + info.pos_decimal[1]),
-                            info.text, fill=color, font=font, spacing=2)
+        draw.text((info.pos_decimal[0] - left, info.pos_decimal[1] - top + OFFSET),
+                            info.text, fill=color, font=font, spacing=SPACING)
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)

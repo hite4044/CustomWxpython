@@ -1,12 +1,13 @@
+import platform
 from typing import cast as type_cast
 
+import cairo
 import wx
 
 from .base_widget import Widget
 from cwx.lib.perf import Counter
 from cwx.render import CustomGraphicsContext
 from cwx.style import WidgetStyle
-
 
 class StaticText(Widget):
     style: WidgetStyle
@@ -15,8 +16,16 @@ class StaticText(Widget):
         super().__init__(parent, widget_style=widget_style)
         self.SetLabel(label)
 
+    def SetFont(self, font: wx.Font):
+        super().SetFont(font)
+        self.RecalculateSize()
+
     def SetLabel(self, label: str):
         super().SetLabel(label)
+        self.RecalculateSize()
+
+    def RecalculateSize(self):
+        label = self.GetLabel()
         dc = wx.GraphicsContext.Create(self)
         dc.SetFont(self.GetFont(), wx.BLACK)
         width, height, _, _ = type_cast(tuple, dc.GetFullTextExtent(label))
