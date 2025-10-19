@@ -26,8 +26,8 @@ class Frame(cwx.Frame):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         st = cwx.StaticText(self, label="🤓🔔Custom Wxpython hite404\nPython is the best language.\nBy hite404")
-        st.SetFont(
-            wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
+        #st.SetFont(
+        #    wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
         sizer.Add(st)
 
         sizer.Add(cwx.Button(self, "点我啊!"), 0)

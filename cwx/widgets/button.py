@@ -123,4 +123,4 @@ class Button(AnimationWidget):
         gc.SetFont(gc.CreateFont(self.GetFont(), self.text_color))
         label = self.GetLabel()
         t_w, t_h, t_x, t_y = type_cast(tuple[int, int, int, int], gc.GetFullTextExtent(label))
-        gc.DrawText(label, int((w - t_w) / 2), int((h - t_h) // 2))
+        gc.DrawText(label, int((w - t_w) / 2), int((h - t_h) / 2))

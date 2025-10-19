@@ -1,4 +1,5 @@
 import platform
+from math import ceil
 from typing import cast as type_cast
 
 import cairo
@@ -26,11 +27,12 @@ class StaticText(Widget):
 
     def RecalculateSize(self):
         label = self.GetLabel()
-        dc = wx.GraphicsContext.Create(self)
-        dc.SetFont(self.GetFont(), wx.BLACK)
-        width, height, _, _ = type_cast(tuple, dc.GetFullTextExtent(label))
-        self.SetSize((width, height))
-        self.SetMinSize((width, height))
+        gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
+        gc.SetFont(gc.CreateFont(self.GetFont(), wx.BLACK))
+        width, height, _, _ = type_cast(tuple, gc.GetFullTextExtent(label))
+        size = (ceil(width), ceil(height))
+        self.RawSetSize(size)
+        self.RawSetMinSize(size)
 
     def draw_content(self, gc: CustomGraphicsContext):
         gc.SetFont(gc.CreateFont(self.GetFont(), col=self.style.fg))

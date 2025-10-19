@@ -172,11 +172,16 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
         # print(len(TheTextCacheManager.rendered_text_cache))
-    #
-    # def GetPartialTextExtents(self, text: str):
-    #     if not self.enable_transparent_text:
-    #         self.gc.GetPartialTextExtents(text)
-    #         return
+    def GetFullTextExtent(self, text: str) -> tuple | tuple[float, float, float, float]:
+        if not self.enable_transparent_text:
+            return self.gc.GetFullTextExtent(text)
+        image = Image.new("RGBA", (0, 0))
+        draw = ImageDraw.Draw(image)
+        wx_font = self.current_font if self.current_font else self.window.GetFont()
+        font = GCRender.GetFontByHandle(wx_font)
+        left, top, right, bottom = draw.multiline_textbbox((0, 0), text, font)
+        OFFSET = GCRender.OFFSET
+        return right - left, bottom - top + OFFSET * 2, left, top - OFFSET
 
     def LoadTextRenderInfo(self, string: str, x: float, y: float):
         wx_font = self.current_font if self.current_font else self.window.GetFont()
@@ -202,6 +207,8 @@ GetFontData.restype = wintypes.DWORD
 
 class GCRender:
     FONT_CVT_CACHE: dict[tuple[int, float], ImageFont.FreeTypeFont] = {}
+    SPACING = 9 * SCALE * 0 + 2 * SCALE
+    OFFSET = 3 * SCALE
     @staticmethod
     def GetFontByHandle(wx_font: wx.Font) -> ImageFont.FreeTypeFont:
         font_size = (wx_font.GetPointSize() if hasattr(wx_font, "CWX_RAW_SIZE") else wx_font.GetPointSize() * SCALE) / 0.75
@@ -239,8 +246,9 @@ class GCRender:
         font = GCRender.GetFontByHandle(wx_font)
 
         # 获取文字大小
-        SPACING = 10 * SCALE
-        OFFSET = 2 * SCALE
+        SPACING = GCRender.SPACING
+        OFFSET = GCRender.OFFSET
+
         sm_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
         left, top, right, bottom = sm_draw.textbbox((0, 0),
                                                               info.text, font=font, spacing=SPACING)
