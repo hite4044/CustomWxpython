@@ -2,6 +2,8 @@ import typing
 from dataclasses import dataclass
 
 import wx
+from win32.lib.win32con import GWL_STYLE, WS_CLIPCHILDREN, WS_CLIPSIBLINGS
+from win32gui import GetWindowLong, SetWindowLong
 
 from ..dpi import translate_size, SCALE
 from ..event import PyCommandEvent
@@ -41,6 +43,10 @@ class Widget(wx.Window):
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
         if self.init_wnd:
             super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW)
+
+            sty = GetWindowLong(self.GetHandle(), GWL_STYLE)
+            sty |= WS_CLIPSIBLINGS
+            SetWindowLong(self.GetHandle(), GWL_STYLE, sty)
         # 确保颜色可以被继承
         super().SetBackgroundColour(parent.GetBackgroundColour())
         self.SetDoubleBuffered(self.enable_double_buffer)
@@ -57,6 +63,8 @@ class Widget(wx.Window):
         self.load_style(self.gen_style)
         self.initializing_style = False
         self.Bind(wx.EVT_PAINT, self.on_paint)
+        # if self.__class__.__name__ != "Frame":
+        #     self.Bind(wx.EVT_ERASE_BACKGROUND, lambda _:None)
         self.py_font = parent.GetFont() if hasattr(parent, "GetFont") else None
         self.last_size = self.GetSize()
 
@@ -78,6 +86,9 @@ class Widget(wx.Window):
 
     def GetFont(self):
         return self.py_font if hasattr(self, "py_font") and self.py_font else super().GetFont()
+
+    def Disable(self):
+        self.Enable(False)
 
     # 一些关于大小设置的DPI替换
     # Some method hook about setting size.
@@ -181,6 +192,7 @@ class CanvasCache:
 
 
 class TopWindowCanvas:
+    """在一个顶层窗口的画布上绘制所有CWX控件的内容, 从而支持各控件重叠进行透明度渲染"""
     def __init__(self, canvas_host: wx.TopLevelWindow):
         canvas_host.CWX_canvas = self
         self.canvas_host = canvas_host
@@ -200,8 +212,6 @@ class TopWindowCanvas:
         self.alpha_buffer = b"\x00" * 1024 * 1024
         self.buffer = None
 
-        self.canvas_image = wx.Image(1, 1)
-        self.canvas_image.SetAlphaBuffer(self.alpha_buffer)
 
     @staticmethod
     def auto_handling_window(window: Widget):
@@ -318,7 +328,7 @@ class TopWindowCanvas:
             return
 
         # 在自身窗口内容上绘制子窗口内容
-        print(window.GetHandle(), "Cache Unhit - Child")
+        # print(window.GetHandle(), "Cache Unhit - Child")
         wnd_gc = CustomGraphicsContext(wx.GraphicsContext.Create(image))
         for child in window.GetChildren():
             if isinstance(child, Widget):

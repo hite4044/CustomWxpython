@@ -7,10 +7,10 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from ..render import CustomGraphicsContext
 from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameCurves, MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
-from ..style import Style, BtnStyle
+from ..render import CustomGraphicsContext
+from ..style import Style, BtnStyle, TransformableColor
 
 cwxEVT_BUTTON = wx.NewEventType()
 EVT_BUTTON = wx.PyEventBinder(cwxEVT_BUTTON, 1)
@@ -47,10 +47,9 @@ class Button(AnimationWidget):
                   ColorGradationAnimation \
                       (0.1,
                        self.style.bg.copy,
-                       self.style.bg.copy.add_luminance(-0.02),
+                       self.style.bg.copy.add_luminance(-0.1),
                        [
-                           KeyFrame(KeyFrameCurves.SMOOTH, 0,
-                                    0),
+                           KeyFrame(KeyFrameCurves.SMOOTH, 0, 0),
                            KeyFrame(KeyFrameCurves.SMOOTH, 1, 1)
                        ])})
 
@@ -65,7 +64,10 @@ class Button(AnimationWidget):
             return
         # print(f"Lum: {data}", flush=True)
         self.style.bg.reset()
-        self.style.bg.add_luminance(data)
+        if isinstance(data, float):
+            self.style.bg.add_luminance(data)
+        else:
+            self.style.bg = TransformableColor(data)
         self.bg_brush = wx.Brush(self.style.bg)
         self.Refresh()
 
@@ -90,6 +92,13 @@ class Button(AnimationWidget):
         self.play_animation("bg")
         self.Refresh()
 
+    def Enable(self, enable: bool = True):
+        super().Enable(enable)
+        self.bg_anim.set_sub_anim("disable")
+        self.bg_anim.set_invent(invent=enable)
+        self.play_animation("bg")
+        self.Refresh()
+
     def SetLabel(self, label: str):
         super().SetLabel(label)
         dc = wx.ClientDC(self)
@@ -105,11 +114,15 @@ class Button(AnimationWidget):
     def load_widget_style(self, style: BtnStyle):
         super().load_widget_style(style)
         self.bg_brush = wx.Brush(style.bg)
-        self.text_color = style.fg
         self.border_pen = wx.GraphicsPenInfo(style.border_color, style.border_width * SCALE, style.border_style)
 
     def draw_content(self, gc: CustomGraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
+
+        self.style.fg.reset()
+        if not self.IsEnabled():
+            self.style.fg.add_luminance(-0.2)
+        text_color = self.style.fg.copy
 
         # 绘制背景
         border_width = self.style.border_width * SCALE
@@ -120,7 +133,7 @@ class Button(AnimationWidget):
                                 w - border_width, h - border_width,
                                 self.style.corner_radius)
         # 绘制文字
-        gc.SetFont(gc.CreateFont(self.GetFont(), self.text_color))
+        gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
         label = self.GetLabel()
         t_w, t_h, t_x, t_y = type_cast(tuple[int, int, int, int], gc.GetFullTextExtent(label))
         gc.DrawText(label, int((w - t_w) / 2), int((h - t_h) / 2))

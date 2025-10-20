@@ -1,23 +1,24 @@
 import ctypes
 import math
-from math import ceil
 import typing
 from ctypes import wintypes
 from dataclasses import dataclass
 from io import BytesIO
+from math import ceil
 
 import wx
 from PIL import ImageFont, Image, ImageDraw
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
-from .tool.image_pil2wx import PilImg2WxImg
 from .dpi import SCALE
+from .tool.image_pil2wx import PilImg2WxImg
 
 
 @dataclass
 class TextRenderCache:
     text: str  # 文字
+    color: tuple[int, int, int, int]  # 颜色
     font: str  # 字体信息NativeFontInfoDesc
     pos_decimal: tuple[float, float]  # 文字位置的小数
 
@@ -26,7 +27,7 @@ class TextRenderCache:
     offset_pos: tuple[int, int] = None
 
     def __hash__(self):
-        return hash(hash(self.text) + hash(self.font) + hash(self.pos_decimal))
+        return hash(hash(self.text) + hash(self.color) + hash(self.font) + hash(self.pos_decimal))
 
     def __eq__(self, other):
         if not isinstance(other, TextRenderCache):
@@ -164,7 +165,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             offset_pos = (int(x), int(y))
         else:  # 新增字体渲染缓存
             wx_font = self.current_font if self.current_font else self.window.GetFont()
-            bitmap, size = GCRender.RenderTransparentText(self, info, wx_font)
+            bitmap, size = GCRender.RenderTransparentText(self, info, wx_font)  # 增加渲染颜色
             info.size = size
             info.text_bitmap = bitmap
             TheTextCacheManager.add_cache(info)
@@ -172,6 +173,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
         # print(len(TheTextCacheManager.rendered_text_cache))
+
     def GetFullTextExtent(self, text: str) -> tuple | tuple[float, float, float, float]:
         if not self.enable_transparent_text:
             return self.gc.GetFullTextExtent(text)
@@ -185,8 +187,9 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
     def LoadTextRenderInfo(self, string: str, x: float, y: float):
         wx_font = self.current_font if self.current_font else self.window.GetFont()
+        color = wx_font.color.Get(True) if hasattr(wx_font, "color") else self.window.GetForegroundColour().Get(True)
         pos_decimal = (x - int(x), y - int(y))
-        return TextRenderCache(string, wx_font.NativeFontInfoDesc, pos_decimal, offset_pos=(int(x), int(y)))
+        return TextRenderCache(string, color, wx_font.NativeFontInfoDesc, pos_decimal, offset_pos=(int(x), int(y)))
 
 
 def get_offset(border_width: float):
@@ -209,9 +212,11 @@ class GCRender:
     FONT_CVT_CACHE: dict[tuple[int, float], ImageFont.FreeTypeFont] = {}
     SPACING = 9 * SCALE * 0 + 2 * SCALE
     OFFSET = 3 * SCALE
+
     @staticmethod
     def GetFontByHandle(wx_font: wx.Font) -> ImageFont.FreeTypeFont:
-        font_size = (wx_font.GetPointSize() if hasattr(wx_font, "CWX_RAW_SIZE") else wx_font.GetPointSize() * SCALE) / 0.75
+        font_size = (wx_font.GetPointSize() if hasattr(wx_font,
+                                                       "CWX_RAW_SIZE") else wx_font.GetPointSize() * SCALE) / 0.75
         cache_key = (int(typing.cast(int, wx_font.GetHFONT())), font_size)
         if cache_key in GCRender.FONT_CVT_CACHE:
             return GCRender.FONT_CVT_CACHE[cache_key]
@@ -251,16 +256,17 @@ class GCRender:
 
         sm_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
         left, top, right, bottom = sm_draw.textbbox((0, 0),
-                                                              info.text, font=font, spacing=SPACING)
+                                                    info.text, font=font, spacing=SPACING)
         if left == top == right == bottom == 0:
             return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
 
         # 绘制文字
         image = Image.new("RGBA", typing.cast(tuple[int, int], (ceil(right - left), ceil(bottom - top + OFFSET))))
         draw = ImageDraw.Draw(image)
+        print(hasattr(wx_font, "color"))
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
         draw.text((info.pos_decimal[0] - left, info.pos_decimal[1] - top + OFFSET),
-                            info.text, fill=color, font=font, spacing=SPACING)
+                  info.text, fill=color, font=font, spacing=SPACING)
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)

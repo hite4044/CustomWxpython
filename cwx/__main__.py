@@ -1,6 +1,6 @@
 from time import perf_counter
 
-from cwx import DefaultStyle, AccentState, FrameTheme
+from cwx import DefaultStyle, AccentState, FrameTheme, TopWindowCanvas
 from cwx.font import ft
 
 timer = perf_counter()
@@ -21,7 +21,7 @@ class Frame(cwx.Frame):
         self.load_style(style)
 
         self.SetFont(ft(9))
-        # self.canvas = TopWindowCanvas(self)
+        self.canvas = TopWindowCanvas(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -30,7 +30,8 @@ class Frame(cwx.Frame):
         #    wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
         sizer.Add(st)
 
-        sizer.Add(cwx.Button(self, "点我啊!"), 0)
+        btn = cwx.Button(self, "点我啊!")
+        sizer.Add(btn, 0)
 
         sizer.AddSpacer(5)
 
@@ -53,6 +54,8 @@ class Frame(cwx.Frame):
             wx.CallLater(3000, func1)
 
         # wx.CallLater(1000, func1)
+        wx.CallLater(2000, btn.Disable)
+        wx.CallLater(4000, btn.Enable)
         sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 5)
 
         sizer.AddSpacer(5)
