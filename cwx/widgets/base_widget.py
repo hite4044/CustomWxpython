@@ -40,9 +40,11 @@ class Widget(wx.Window):
     init_wnd: bool = True  # 指示是否初始化wx.Window类
     enable_double_buffer: bool = True
 
+    WND_NAME = "CWX_Widget"
+
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None):
         if self.init_wnd:
-            super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW)
+            super().__init__(parent, style=style | wx.TRANSPARENT_WINDOW, name=self.WND_NAME)
 
             sty = GetWindowLong(self.GetHandle(), GWL_STYLE)
             sty |= WS_CLIPSIBLINGS
@@ -89,6 +91,9 @@ class Widget(wx.Window):
 
     def Disable(self):
         self.Enable(False)
+
+    def GetTupClientSize(self) -> tuple[int, int]:
+        return tuple(typing.cast(tuple[int, int], super().GetClientSize().GetIM()))
 
     # 一些关于大小设置的DPI替换
     # Some method hook about setting size.
@@ -165,6 +170,14 @@ class Widget(wx.Window):
         Load widget style, implemented widget style load here.
         """
         self.style = style
+
+    @property
+    def is_dark(self) -> bool:
+        """
+        指示当前主题是否为暗色主题
+        Indicate whether the current theme is dark.
+        """
+        return self.gen_style.is_dark()
 
     def on_paint(self, _):
         dc = wx.PaintDC(self)
@@ -274,8 +287,6 @@ class TopWindowCanvas:
         for child in self.canvas_host.GetChildren():
             if isinstance(child, Widget):
                 self.draw_wnd(gc, self.canvas_host, child)
-
-        print(timer.endT())
 
     def draw_wnd(self, gc: CustomGraphicsContext, root_window: wx.Window, window: Widget):
         gc.GetWindow = lambda: root_window

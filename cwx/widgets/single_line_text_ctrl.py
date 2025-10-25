@@ -4,9 +4,8 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from ..lib.imm import set_IME_position
 from ..render import CustomGraphicsContext
-from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIMATION, AnimationGroup, ColorGradationAnimation
+from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradationAnimation
 from ..dpi import SCALE
 from ..style import Style, TextCtrlStyle
 
@@ -39,9 +38,9 @@ class TextCtrl(AnimationWidget):
         self.border_width = EZKeyFrameAnimation(0.15, KeyFrameCurves.SMOOTH, self.style.border_width,
                                                 self.style.active_border_width)
         self.border_tl_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_tl_border,
-                                                       MAKE_ANIMATION(KeyFrameCurves.SMOOTH))
+                                                       MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
         self.border_br_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_br_border,
-                                                       MAKE_ANIMATION(KeyFrameCurves.SMOOTH))
+                                                       MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
         self.border_anim = AnimationGroup({
             "width": self.border_width,
             "tl_color": self.border_tl_color,
@@ -289,7 +288,7 @@ class TextCtrl(AnimationWidget):
             .LinearGradient(0, 0, w, h, self.border_tl_color.value, self.border_br_color.value)
         gc.SetPen(gc.CreatePen(self.border_pen))
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
-        gc.DrawRoundedRectangle(border_width, border_width, w - border_width *2, h - border_width*2, self.style.corner_radius)
+        gc.DrawInnerRoundedRect(0, 0, w, h, self.style.corner_radius, border_width)
         text_x = TC_X_PAD
         text_y = TC_Y_PAD
         if self.cursor_pos_anim.start == self.cursor_pos_anim.end == -1:

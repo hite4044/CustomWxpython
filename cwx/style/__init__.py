@@ -18,6 +18,7 @@ class Style:
         if colors is None:
             colors = Colors.default()
         self.colors = colors
+        self.is_dark = Style.sys_is_dark()
 
         self.load()
 
@@ -30,12 +31,14 @@ class Style:
         self.progress_bar_style = ProgressBarStyle.load(self)
 
     @staticmethod
-    def is_dark():
+    def sys_is_dark():
         return wx.SystemSettings.GetAppearance().IsDark()
 
     def set_as_light(self):
         self.colors.bg = wx.Colour(240, 240, 240)
         self.colors.fg = wx.BLACK
+        self.is_dark = False
+
         self.load()
         self.frame_style.caption_theme = FrameTheme.LIGHT
         return self
@@ -43,6 +46,8 @@ class Style:
     def set_as_dark(self):
         self.colors.bg = wx.BLACK
         self.colors.fg = wx.WHITE
+        self.is_dark = True
+
         self.load()
         self.frame_style.caption_theme = FrameTheme.DARK
         return self
@@ -71,7 +76,7 @@ DefaultStyle = DefaultStyleCls()
 
 class WidgetStyle:
     """
-    用于记录组件绘制的颜色、边框等信息
+    用于记录组件绘制的颜色、边框等信息, 注意样式信息应当不进行DPI转换
     Including information about widget's drawing, such as color, border
     """
 
@@ -266,3 +271,36 @@ class ProgressBarStyle(WidgetStyle):
         self.bar.gradient_stops.SetStartColour(wx.Colour(0x00, 0xdb, 0xde))
         self.bar.gradient_stops.SetEndColour(wx.Colour(0xfc, 0x00, 0xff))
         return self
+
+
+class CheckBoxStyle(WidgetStyle):
+    def __init__(self,
+                 fg: wx.Colour, box_active_bg: GradientBrush, box_hover_bg: GradientBrush,
+                 box_sym_pen: GradientPen, box_border: GradientPen,
+                 box_corner_radius: float, box_size: float):
+        """
+        Args:
+            fg: label's color.
+            box_active_bg: background color when the box is active.
+            box_sym_pen: symbol's color (in the box).
+            box_border: border color of the box.
+        """
+        super().__init__(fg)
+        self.box_active_bg: GradientBrush = box_active_bg
+        self.box_hover_bg: GradientBrush = box_hover_bg
+        self.box_sym: GradientPen = box_sym_pen
+        self.box_border: GradientPen = box_border
+        self.box_corner_radius: float = box_corner_radius
+        self.box_size: float = box_size
+
+    @classmethod
+    def load(cls, style: Style) -> 'CheckBoxStyle':
+        return cls(
+            style.colors.fg,
+            GradientBrush(style.colors.primary),
+            GradientBrush(wx.Colour(255, 255, 255, 10) if style.is_dark else wx.Colour(0, 0, 0, 10)),
+            GradientPen(style.colors.fg, width=2),
+            GradientPen(style.colors.border, width=1),
+            3,
+            20
+        )

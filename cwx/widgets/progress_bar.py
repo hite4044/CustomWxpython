@@ -49,7 +49,7 @@ class ProgressBar(AnimationWidget):
         # 背景
         gc.SetBrush(gc.CreateBrush(self.bg_brush))
         gc.SetPen(self.style.border.create_pen(gc, (w, h)))
-        GCRender.RenderBorder(gc, border_width, self.style.corner_radius)
+        GCRender.RenderInnerRoundedRect(gc, border_width, self.style.corner_radius)
 
         # 进度条
         gc.SetPen(TRANSPARENT_PEN)

@@ -1,3 +1,5 @@
+from typing import TypeVar
+
 import wx
 
 from ..animation import Animation, AnimationGroup
@@ -24,6 +26,7 @@ class AnimationWidget(Widget):
     How to implement:
     1. Rewrite method `animation_callback`, this method will call in each animation frame.
     """
+
     def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 1):
         super().__init__(parent, style, widget_style)
         self.fps = fps
@@ -34,7 +37,16 @@ class AnimationWidget(Widget):
         self.timer = wx.Timer()
         self.timer.StartOnce(1000 // self.fps)
         self.timer.Stop()
-        self.timer.Bind(wx.EVT_TIMER, self.animation_call)
+        self.timer.Bind(wx.EVT_TIMER, self._animation_call)
+
+    ANIM_T = TypeVar('ANIM_T')
+
+    def reg_anim_element(self, name: str, animation_element: type[ANIM_T]) -> type[ANIM_T]:
+        """
+        注册一个动画元素
+        """
+        self.animations[name] = animation_element.anim
+        return animation_element
 
     def reg_animation(self, name: str, animation: Animation):
         """
@@ -88,7 +100,7 @@ class AnimationWidget(Widget):
         if not self.in_playing:
             self.timer.Stop()
 
-    def animation_call(self, _):
+    def _animation_call(self, _):
         """
         内部使用的函数, 请使用 `animation_callback`.
         A method for internal use, please using `animation_callback`

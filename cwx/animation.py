@@ -282,7 +282,7 @@ class AnimationGroup(Animation):
         raise NotImplementedError
 
 
-def MAKE_ANIMATION(way: KeyFrameCurves):
+def MAKE_ANIM_FRAMES(way: KeyFrameCurves):
     """
     以指定的动画曲线创建一个从0~1的关键帧列表
 
@@ -291,3 +291,7 @@ def MAKE_ANIMATION(way: KeyFrameCurves):
         KeyFrame(way, 0, 0.0),
         KeyFrame(way, 1, 1.0)
     ]
+
+
+def MAKE_ANIMATION(during: float, way: KeyFrameCurves = KeyFrameCurves.SMOOTH):
+    return KeyFrameAnimation(during, MAKE_ANIM_FRAMES(way))

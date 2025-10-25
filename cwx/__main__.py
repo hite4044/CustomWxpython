@@ -1,12 +1,11 @@
 from time import perf_counter
 
-from cwx import DefaultStyle, AccentState, FrameTheme, TopWindowCanvas
-from cwx.font import ft
 
 timer = perf_counter()
 import wx
 import cwx
 import faulthandler
+from cwx.font import ft
 
 faulthandler.enable()
 
@@ -14,20 +13,20 @@ faulthandler.enable()
 class Frame(cwx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
-        style = DefaultStyle.DEFAULT
-        style.frame_style.frame_theme = FrameTheme.DARK
-        style.frame_style.accent_state = AccentState.BLUR
+        style = cwx.DefaultStyle.DEFAULT
+        style.set_as_light()
+        style.frame_style.backdrop_type = cwx.BackdropType.ACRYLIC
 
         self.load_style(style)
 
         self.SetFont(ft(9))
-        self.canvas = TopWindowCanvas(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        st = cwx.StaticText(self, label="🤓🔔Custom Wxpython hite404\nPython is the best language.\nBy hite404")
-        #st.SetFont(
-        #    wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
+        st = cwx.StaticText(self, label="🤓🔔Custom Wxpython\nPython is the best language.\nBy hite404")
+        st.SetFont(
+           wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
+
         sizer.Add(st)
 
         btn = cwx.Button(self, "点我啊!")
@@ -63,6 +62,8 @@ class Frame(cwx.Frame):
         sizer.Add(cwx.StaticLine(self), 0, wx.EXPAND)
 
         sizer.AddStretchSpacer()
+
+        sizer.Add(cwx.CheckBox(self, "Check me!", style=wx.CHK_UNCHECKED | wx.CHK_ALLOW_3RD_STATE_FOR_USER | wx.CHK_3STATE), 1, wx.EXPAND)
 
         self.SetSizer(sizer)
 

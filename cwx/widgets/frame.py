@@ -2,11 +2,10 @@ import typing
 
 import wx
 
-from cwx import WidgetStyle
-from cwx.style import FrameStyle, Style, FrameTheme, AccentState
+from cwx.style import FrameStyle, Style, FrameTheme, AccentState, WidgetStyle
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
-from cwx.widgets import Widget
+from cwx.widgets import Widget, TopWindowCanvas
 
 
 class TopLevelWrapper(Widget):
@@ -22,6 +21,7 @@ class TopLevelWrapper(Widget):
 
         self.WindowBlurEnabled = False
         Widget.__init__(self, self)
+
         # self.Refresh = lambda :None
 
     def EnableWindowComposition(self,
@@ -51,7 +51,7 @@ class TopLevelWrapper(Widget):
     def SetCaptionTheme(self, theme: FrameTheme):
         """如果系统允许了应用深色模式, 设置窗口标题栏为深色"""
         set_frame_dark(self.GetHandle(),
-                       Style.is_dark() if theme == FrameTheme.AUTO else (theme == FrameTheme.DARK))
+                       self.gen_style.is_dark if theme == FrameTheme.AUTO else (theme == FrameTheme.DARK))
 
     def SetCaptionColor(self, color: wx.Colour):
         """设置标题栏颜色"""
@@ -92,8 +92,12 @@ class Frame(wx.Frame, TopLevelWrapper):
         wx.Frame.__init__(self, *args, **kwargs)
         TopLevelWrapper.__init__(self, *args, gen_style=gen_style, **kwargs)
 
+        self.canvas = TopWindowCanvas(self)
+
 
 class Dialog(wx.Dialog, TopLevelWrapper):
     def __init__(self, *args, gen_style: Style | None = None, **kwargs):
         wx.Dialog.__init__(self, *args, **kwargs)
         TopLevelWrapper.__init__(self, *args, gen_style=gen_style, **kwargs)
+
+        self.canvas = TopWindowCanvas(self)

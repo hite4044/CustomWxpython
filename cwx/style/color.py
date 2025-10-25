@@ -73,6 +73,24 @@ class TransformableColor(wx.Colour):
         self.Set(*self.color.rgb_tuple, self.GetAlpha())
         return self
 
+    def light1(self):
+        return self.add_luminance(LUM_LEVEL)
+
+    def light2(self):
+        return self.add_luminance(LUM_LEVEL * 2)
+
+    def light3(self):
+        return self.add_luminance(LUM_LEVEL * 3)
+
+    def dark1(self):
+        return self.add_luminance(-LUM_LEVEL)
+
+    def dark2(self):
+        return self.add_luminance(-LUM_LEVEL * 2)
+
+    def dark3(self):
+        return self.add_luminance(-LUM_LEVEL * 3)
+
     @property
     def copy(self):
         return TransformableColor(wx.Colour(self.Get()))
@@ -160,18 +178,20 @@ class Colors:
                  secondary: wx.Colour,
                  fg: wx.Colour,
                  bg: wx.Colour,
-                 border: wx.Colour,
-                 input_bg: wx.Colour):
+                 border: wx.Colour):
         self.primary = primary
         self.secondary = secondary
         self.fg = fg
         self.bg = bg
         self.border = border
-        self.input_bg = input_bg
 
     @property
     def input_fg(self):
         return self.fg
+
+    @property
+    def input_bg(self):
+        return ColorTransformer.with_alpha(self.bg, 40)
 
     @staticmethod
     def default():
@@ -180,8 +200,7 @@ class Colors:
             secondary=wx.Colour(85, 85, 85, 128),
             fg=wx.Colour(255, 255, 255),
             bg=wx.BLACK,
-            border=wx.Colour(85, 85, 85),
-            input_bg=wx.Colour(0, 0, 0, 40)
+            border=wx.Colour(85, 85, 85)
         )
 
 
@@ -197,7 +216,7 @@ class GradientDir(Enum):
     AS_MAX_SIDE = 24  # 标志使用最远的一条边
 
 
-class GradientColor(wx.Colour):
+class GradientColor(TransformableColor):
     """
     渐变颜色, 快捷使用多种渐变设定
     """
@@ -289,15 +308,18 @@ class GradientPen(GradientColor):
         # 圆形渐变的结束位置
         self.gradient_to: tuple[float, float] | None = None if gradient_from is None else gradient_to
 
-    def create_pen(self, gc: wx.GraphicsContext, size: tuple[float, float]):
+    def create_pen(self, gc: wx.GraphicsContext, size: tuple[float, float], dpi_active: bool = True):
         """
         以渐变颜色创建一个笔,
         Create a pen with gradient color.
 
         :param gc: `wx.GraphicsContext`
         :param size: 控件的大小
+        :param dpi_active: 是否自动进行DPI转换
         """
-        pen = wx.GraphicsPenInfo(self, self.width * SCALE, self.pen_style)
+        width = self.width * SCALE if dpi_active else self.width
+        print(width)
+        pen = wx.GraphicsPenInfo(self, width, self.pen_style).Width(width)
         if self.gradient_type == wx.GRADIENT_LINEAR:
             from_pt = (0, 0)
             if isinstance(self.direction, int) or isinstance(self.direction, float):

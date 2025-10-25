@@ -11,6 +11,7 @@ from PIL import ImageFont, Image, ImageDraw
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
+from .animation import Animation
 from .dpi import SCALE
 from .tool.image_pil2wx import PilImg2WxImg
 
@@ -113,12 +114,78 @@ class JumpSubClassCheck:
 JumpSubClassCheck.GCType = typing.cast(type[wx.GraphicsContext], object)
 
 
+class AnimationElement:
+    def __init__(self, anim: Animation):
+        self.anim = anim
+
+    def draw(self, gc: 'CustomGraphicsContext'):
+        pass
+
+
+class DrawLinesAE(AnimationElement):
+    def __init__(self, anim: Animation, point2Ds: list[wx.Point2D] = None, fill_style: wx.PolygonFillMode = wx.ODDEVEN_RULE):
+        super().__init__(anim)
+        self.point2Ds: list[wx.Point2D] = point2Ds
+        self.fill_style = fill_style
+
+    def draw(self, gc: 'CustomGraphicsContext'):
+        if self.point2Ds is None:
+            return
+
+        value = self.anim.value
+        if value == 0:
+            return
+        if value == 1:
+            gc.DrawLines(self.point2Ds, self.fill_style)
+            return
+
+        point2Ds = self.point2Ds
+        active_points = [point2Ds[0]]
+        distances = [point2Ds[i].GetDistance(point2Ds[i + 1]) for i in range(len(point2Ds) - 1)]
+        total_distance = sum(distances)
+        left_distance = total_distance * min(max(value, 0), 1)
+        distance = 0
+        for i, distance in enumerate(distances):
+            active_points.append(point2Ds[i + 1])
+            if left_distance <= distance:
+                break
+            left_distance -= distance
+        if left_distance != 0:
+            last_second_pt = wx.Point2D(active_points[-2])
+            last_pt = wx.Point2D(active_points[-1])
+            percent = left_distance / distance
+            last_pt[0] = last_second_pt[0] + (last_pt[0] - last_second_pt[0]) * percent
+            last_pt[1] = last_second_pt[1] + (last_pt[1] - last_second_pt[1]) * percent
+            active_points[-1] = last_pt
+
+        gc.DrawLines(active_points, wx.ODDEVEN_RULE)
+
+
+class StateClass:
+    def __init__(self, gc: wx.GraphicsContext):
+        self.gc = gc
+
+    def __enter__(self):
+        self.gc.PushState()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.gc.PopState()
+
+
 class CustomGraphicsContext(JumpSubClassCheck.GCType):
     """
     GraphicsContext的拓展类
     Extra class of GraphicsContext.
     """
+    _FACTORY_GC = wx.GraphicsContext.Create()
+    TRANSPARENT_BRUSH: wx.GraphicsBrush = None
+    TRANSPARENT_PEN = _FACTORY_GC.CreatePen(wx.GraphicsPenInfo(wx.BLACK, 0, wx.PENSTYLE_TRANSPARENT))
     font_trace_map: dict[int, wx.Font] = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls.TRANSPARENT_BRUSH is None:
+            cls.TRANSPARENT_BRUSH = cls._FACTORY_GC.CreateBrush(wx.Brush(wx.BLACK, wx.BRUSHSTYLE_TRANSPARENT))
+        return super().__new__(cls)
 
     def __init__(self, gc: wx.GraphicsContext):
         if 1 * 1.0 == 0:
@@ -191,6 +258,23 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         pos_decimal = (x - int(x), y - int(y))
         return TextRenderCache(string, color, wx_font.NativeFontInfoDesc, pos_decimal, offset_pos=(int(x), int(y)))
 
+    def DrawInnerRoundedRect(self, x: float, y: float, w: float, h: float, radius: float, border_width: float):
+        """在指定的矩形内部绘制一个矩形"""
+        with self.State:
+            self.Translate(x, y)
+            GCRender.RenderInnerRoundedRect(self.gc, border_width, radius, w, h)
+
+    @property
+    def State(self):
+        """
+        使用 `with gc.State:` 来保存当前状态并在结束时恢复状态
+        """
+        return StateClass(self.gc)
+
+    def DrawAnimationElement(self, element: AnimationElement):
+        """绘制一个动画元素"""
+        element.draw(self)
+
 
 def get_offset(border_width: float):
     if border_width == 1.0:
@@ -234,9 +318,6 @@ class GCRender:
             raise Exception("GetFontData error")
         DeleteDC(hdc)
 
-        # if size < 1024 * 1024 * 100:
-        #     with open("font.ttf", "wb") as f:
-        #         f.write(font_buffer.raw)
         font_io = BytesIO(font_buffer.raw)
 
         font = ImageFont.truetype(font_io, font_size)
@@ -263,10 +344,9 @@ class GCRender:
         # 绘制文字
         image = Image.new("RGBA", typing.cast(tuple[int, int], (ceil(right - left), ceil(bottom - top + OFFSET))))
         draw = ImageDraw.Draw(image)
-        print(hasattr(wx_font, "color"))
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
         draw.text((info.pos_decimal[0] - left, info.pos_decimal[1] - top + OFFSET),
-                  info.text, fill=color, font=font, spacing=SPACING)
+                  info.text, fill=color, font=font, spacing=SPACING)  # , embedded_color=True
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)
@@ -276,12 +356,16 @@ class GCRender:
         )
 
     @staticmethod
-    def RenderBorder(gc: wx.GraphicsContext, border_width: float, corner_radius: float):
+    def RenderInnerRoundedRect(gc: wx.GraphicsContext, border_width: float, corner_radius: float,
+                               width: float = None, height: float = None):
         """
         渲染一个紧密贴合控件外部的边框
         Render a perfect border
         """
-        w, h = gc.GetSize()
+        if width is None or height is None:
+            w, h = gc.GetSize()
+        else:
+            w, h = width, height
         path = gc.CreatePath()
         offset = get_offset(border_width)
         dn_offset = border_width - offset

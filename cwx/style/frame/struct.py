@@ -9,7 +9,7 @@ class FrameTheme(Enum):
 
 
 class BackdropType(Enum):
-    """窗口背景的类型, 会在窗口失焦时统一渐变为当前系统纯色"""
+    """窗口背景类型, 会自动根据当前系统, 会在窗口失焦时统一渐变为当前系统纯色"""
     DONT_SET = -1  # 不设置, 使用此值将不会进行任何操作
     AUTO = 0  # 无
 
@@ -24,7 +24,7 @@ class BackdropType(Enum):
 
 
 class AccentState(Enum):
-    """窗口背景的模糊状态, 会覆盖BackdropType, 窗口失焦时不会变为纯色"""
+    """窗口背景模糊状态, 会覆盖BackdropType, 窗口失焦时不会变为纯色"""
     DONT_SET = -1   # 不设置, 使用此值将不会进行任何操作
     DISABLE = 0  # 禁用
 
