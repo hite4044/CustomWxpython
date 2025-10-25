@@ -14,7 +14,7 @@ class Frame(cwx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
         style = cwx.DefaultStyle.DEFAULT
-        style.set_as_light()
+        style.set_as_dark()
         style.frame_style.backdrop_type = cwx.BackdropType.ACRYLIC
 
         self.load_style(style)
@@ -63,7 +63,7 @@ class Frame(cwx.Frame):
 
         sizer.AddStretchSpacer()
 
-        sizer.Add(cwx.CheckBox(self, "Check me!", style=wx.CHK_UNCHECKED | wx.CHK_ALLOW_3RD_STATE_FOR_USER | wx.CHK_3STATE), 1, wx.EXPAND)
+        sizer.Add(cwx.CheckBox(self, "Check ME!", style=wx.CHK_CHECKED | wx.ALIGN_RIGHT), 1, wx.EXPAND)
 
         self.SetSizer(sizer)
 

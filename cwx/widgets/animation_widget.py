@@ -65,8 +65,8 @@ class AnimationWidget(Widget):
 
     def play_animation(self, name: str):
         """
-        播放某个已注册动画
-        Play animation by name.
+        调整某个动画到开头, 并播放某个该动画
+        Play an animation.
         """
         if name in self.animations:
             anim = self.animations[name]
@@ -85,7 +85,7 @@ class AnimationWidget(Widget):
 
     def stop_animation(self, name: str | Animation | AnimationGroup):
         """
-        停止某个动画
+        停止某个动画, 并调整其到结尾
         Stop an animation.
         """
         if not isinstance(name, str):

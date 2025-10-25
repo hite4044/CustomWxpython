@@ -3,6 +3,7 @@ import math
 import typing
 from ctypes import wintypes
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 from math import ceil
 
@@ -172,6 +173,15 @@ class StateClass:
         self.gc.PopState()
 
 
+class TextRenderingHint(Enum):
+    DEFAULT = 0
+    SINGLE_BIT_PER_PIXEL_GRID_FIT = 1
+    SINGLE_BIT_PER_PIXEL = 2
+    ANTI_ALIAS_GRID_FIT = 3
+    ANTI_ALIAS = 4
+    CLEAR_TYPE_GRID_FIT = 5
+
+
 class CustomGraphicsContext(JumpSubClassCheck.GCType):
     """
     GraphicsContext的拓展类
@@ -241,14 +251,15 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
         # print(len(TheTextCacheManager.rendered_text_cache))
 
-    def GetFullTextExtent(self, text: str) -> tuple | tuple[float, float, float, float]:
+    def GetFullTextExtent(self, text: str) -> tuple[float, float, float, float]:
         if not self.enable_transparent_text:
-            return self.gc.GetFullTextExtent(text)
+            return typing.cast(tuple[float, float, float, float], self.gc.GetFullTextExtent(text))
         image = Image.new("RGBA", (0, 0))
         draw = ImageDraw.Draw(image)
         wx_font = self.current_font if self.current_font else self.window.GetFont()
         font = GCRender.GetFontByHandle(wx_font)
-        left, top, right, bottom = draw.multiline_textbbox((0, 0), text, font)
+        spacing = GCRender.SPACING
+        left, top, right, bottom = draw.multiline_textbbox((0, 0), text, font, spacing=spacing)
         OFFSET = GCRender.OFFSET
         return right - left, bottom - top + OFFSET * 2, left, top - OFFSET
 
@@ -294,8 +305,8 @@ GetFontData.restype = wintypes.DWORD
 
 class GCRender:
     FONT_CVT_CACHE: dict[tuple[int, float], ImageFont.FreeTypeFont] = {}
-    SPACING = 9 * SCALE * 0 + 2 * SCALE
-    OFFSET = 3 * SCALE
+    SPACING = int(6 * SCALE)
+    OFFSET = int(3 * SCALE)
 
     @staticmethod
     def GetFontByHandle(wx_font: wx.Font) -> ImageFont.FreeTypeFont:

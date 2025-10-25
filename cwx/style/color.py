@@ -237,6 +237,7 @@ class GradientColor(TransformableColor):
         super().__init__(color)
         self.gradient_type = gradient_type
         self.direction: GradientDir | int = direction
+        self.stop_is_none = stop_color is None
 
         self.gradient_stops = wx.GraphicsGradientStops(color, color if stop_color is None else stop_color)
         for percent, stop_color in (stops if stops else []):
@@ -253,17 +254,22 @@ class GradientColor(TransformableColor):
     def update_start_color(self):
         self.gradient_stops.SetStartColour(self)
 
+    def update_myself(self):
+        self.update_start_color()
+        if self.stop_is_none:
+            self.stop_color = self
+
     def Set(self, *args, **kw):
         super().Set(*args, **kw)
-        self.update_start_color()
+        self.update_myself()
 
     def SetRGB(self, colRGB):
         super().SetRGB(colRGB)
-        self.update_start_color()
+        self.update_myself()
 
     def SetRGBA(self, colRGBA):
         super().SetRGBA(colRGBA)
-        self.update_start_color()
+        self.update_myself()
 
 
 class GradientPen(GradientColor):
@@ -318,7 +324,6 @@ class GradientPen(GradientColor):
         :param dpi_active: 是否自动进行DPI转换
         """
         width = self.width * SCALE if dpi_active else self.width
-        print(width)
         pen = wx.GraphicsPenInfo(self, width, self.pen_style).Width(width)
         if self.gradient_type == wx.GRADIENT_LINEAR:
             from_pt = (0, 0)
