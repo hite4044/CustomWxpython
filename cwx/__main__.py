@@ -29,6 +29,9 @@ class Frame(cwx.Frame):
 
         sizer.Add(st)
 
+        btn = cwx.Button(self, "点我啊!")
+        sizer.Add(btn, 0)
+
         btn = cwx.HyperlinkButton(self, "点我啊!")
         sizer.Add(btn, 0)
 

@@ -1,8 +1,9 @@
 import typing
 from dataclasses import dataclass
+from enum import Enum
 
 import wx
-from win32.lib.win32con import GWL_STYLE, WS_CLIPCHILDREN, WS_CLIPSIBLINGS
+from win32.lib.win32con import GWL_STYLE, WS_CLIPSIBLINGS
 from win32gui import GetWindowLong, SetWindowLong
 
 from ..dpi import translate_size, SCALE
@@ -26,6 +27,12 @@ class StyleUpdateEvent(PyCommandEvent):
 1. 重写translate_style方法, 负责将 主题(Style) 转换为 组件主题(WidgetStyle)
 2. 继承load_widget_style方法, 加载 组件主题(WidgetStyle)
 """
+
+
+class MaskState(Enum):
+    NONE = 0  # 无
+    BELOW = 1  # 鼠标悬浮在控件上面
+    DOWN = 2  # 鼠标按下
 
 
 class Widget(wx.Window):
@@ -206,6 +213,7 @@ class CanvasCache:
 
 class TopWindowCanvas:
     """在一个顶层窗口的画布上绘制所有CWX控件的内容, 从而支持各控件重叠进行透明度渲染"""
+
     def __init__(self, canvas_host: wx.TopLevelWindow):
         canvas_host.CWX_canvas = self
         self.canvas_host = canvas_host
@@ -224,7 +232,6 @@ class TopWindowCanvas:
 
         self.alpha_buffer = b"\x00" * 1024 * 1024
         self.buffer = None
-
 
     @staticmethod
     def auto_handling_window(window: Widget):

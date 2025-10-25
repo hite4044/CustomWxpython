@@ -163,7 +163,8 @@ class BtnStyle(WidgetStyle):
         :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
         """
         super().__init__(fg, bg)
-        self.float_bg = bg.copy.add_luminance(0.08)
+        self.float_bg = TC(CT.add_luminance(bg, +0.08))
+        self.click_bg = TC(CT.add_luminance(bg, -0.08))
 
         self.border_color = border_color
         self.corner_radius = corner_radius
@@ -190,8 +191,8 @@ class HyperlinkBtnStyle(BtnStyle):
         widget_style = super().load(style)
         widget_style.bg = TC(TRANSPARENT_COLOR)
         widget_style.border_color = TC(TRANSPARENT_COLOR)
-        widget_style.float_bg = TC(wx.WHITE if style.is_dark else wx.BLACK).with_alpha(20).copy
-        print(widget_style.float_bg)
+        widget_style.float_bg = TC(CT.with_alpha(wx.WHITE if style.is_dark else wx.BLACK, 20))
+        widget_style.click_bg = TC(CT.add_luminance(widget_style.float_bg, -0.2))
         return widget_style
 
 

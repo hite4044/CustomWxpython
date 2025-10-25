@@ -130,7 +130,7 @@ class ColorTransformer:
         base = color.get_luminance()
         color.set_luminance(max(min(base + luminance, 1), 0))
         color_tup: tuple[int, int, int] = color.get_rgb()
-        return wx.Colour((int(color_tup[0] * 255), int(color_tup[1] * 255), int(color_tup[2] * 255)))
+        return wx.Colour(int(color_tup[0] * 255), int(color_tup[1] * 255), int(color_tup[2] * 255), wx_color.GetAlpha())
 
     @staticmethod
     def highlight(color: wx.Colour):

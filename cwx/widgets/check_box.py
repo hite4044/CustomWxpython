@@ -1,8 +1,7 @@
-from enum import Enum
-
 import wx
 
 from .animation_widget import AnimationWidget
+from .base_widget import MaskState
 from ..animation import KeyFrameCurves, MAKE_ANIMATION
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
@@ -36,11 +35,6 @@ class CheckBox(AnimationWidget):
 
     LABEL_PAD = 5 * SCALE
 
-    class MaskState(Enum):
-        NONE = 0  # 无
-        BELOW = 1  # 鼠标悬浮在控件上面
-        DOWN = 2  # 鼠标按下
-
     def __init__(self, parent: wx.Window, label: str = "", style=0, widget_style: WidgetStyle = None):
         super().__init__(parent, style, widget_style, fps=60)
 
@@ -50,7 +44,7 @@ class CheckBox(AnimationWidget):
         self.allow_3_state_for_user: bool = bool(style & wx.CHK_ALLOW_3RD_STATE_FOR_USER)
         self.align_right: bool = bool(style & wx.ALIGN_RIGHT)
 
-        self.mask_state: CheckBox.MaskState = CheckBox.MaskState.NONE  # 指示是否绘制点击图层
+        self.mask_state: MaskState = MaskState.NONE  # 指示是否绘制点击图层
         self.check_sym_am = self.reg_anim_element("check", DrawLinesAE(MAKE_ANIMATION(0.2, KeyFrameCurves.SMOOTH), []))
 
         self.text_extent: tuple[float, float] = (1.0, 1.0)
@@ -87,11 +81,11 @@ class CheckBox(AnimationWidget):
             last_state = self.mask_state
             if in_box:
                 if event.LeftIsDown():
-                    self.mask_state = CheckBox.MaskState.DOWN
+                    self.mask_state = MaskState.DOWN
                 else:
-                    self.mask_state = CheckBox.MaskState.BELOW
+                    self.mask_state = MaskState.BELOW
             else:
-                self.mask_state = CheckBox.MaskState.NONE
+                self.mask_state = MaskState.NONE
             if self.mask_state != last_state:
                 self.Refresh()
 
@@ -125,9 +119,9 @@ class CheckBox(AnimationWidget):
             if self.current_state in [wx.CHK_CHECKED, wx.CHK_UNDETERMINED]:  # 绘制选中或者半选中
                 # 绘制背景
                 self.style.box_active_bg.reset()
-                if self.mask_state == CheckBox.MaskState.DOWN:
+                if self.mask_state == MaskState.DOWN:
                     self.style.box_active_bg.dark2() if self.gen_style.is_dark else self.style.box_active_bg.light2()
-                elif self.mask_state == CheckBox.MaskState.BELOW:
+                elif self.mask_state == MaskState.BELOW:
                     self.style.box_active_bg.dark1() if self.gen_style.is_dark else self.style.box_active_bg.light1()
                 gc.SetBrush(self.style.box_active_bg.create_brush(gc, box_size))
                 gc.DrawRoundedRectangle(0, 0, *box_size, radius)
@@ -145,7 +139,7 @@ class CheckBox(AnimationWidget):
                 gc.DrawAnimationElement(self.check_sym_am)
 
             elif self.current_state == wx.CHK_UNCHECKED:  # 绘制未选中
-                if self.mask_state == CheckBox.MaskState.BELOW:
+                if self.mask_state == MaskState.BELOW:
                     gc.SetBrush(self.style.box_hover_bg.create_brush(gc, box_size))
                 else:
                     gc.SetBrush(gc.TRANSPARENT_BRUSH)

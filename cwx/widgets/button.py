@@ -7,8 +7,8 @@ from typing import cast as type_cast
 import wx
 
 from .animation_widget import AnimationWidget
-from .. import WidgetStyle
-from ..animation import KeyFrameAnimation, KeyFrame, KeyFrameCurves, MultiKeyFrameAnimation, ColorGradationAnimation
+from .base_widget import MaskState
+from ..animation import MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
 from ..render import CustomGraphicsContext
 from ..style import Style, BtnStyle, TransformableColor, HyperlinkBtnStyle
@@ -29,6 +29,7 @@ class ButtonBase(AnimationWidget):
     def __init__(self, parent: wx.Window, widget_style: BtnStyle = None):
         """按钮基类"""
         super().__init__(parent, widget_style=widget_style, fps=60)
+        self.mask_state = MaskState.NONE
         self.init_animation()
 
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_events)
@@ -38,15 +39,9 @@ class ButtonBase(AnimationWidget):
 
         self.bg_anim = MultiKeyFrameAnimation \
             (0.2,
-             {"float":
-                  ColorGradationAnimation(0.1, self.style.bg.copy, self.style.float_bg.copy),
-              "click":
-                  KeyFrameAnimation(0.1, [
-                      KeyFrame(KeyFrameCurves.SMOOTH, 0, +0.08),
-                      KeyFrame(KeyFrameCurves.SMOOTH, 1, -0.08)
-                  ]),
-              "disable":
-                  ColorGradationAnimation(0.1, self.style.bg.copy, self.style.bg.copy.add_luminance(-0.1))
+             {"float": ColorGradationAnimation(0.1, self.style.bg.copy, self.style.float_bg.copy),
+              "click": ColorGradationAnimation(0.1, self.style.float_bg.copy, self.style.click_bg.copy),
+              "disable": ColorGradationAnimation(0.1, self.style.bg.copy, self.style.bg.copy.add_luminance(-0.1))
               })
 
         self.reg_animation("bg", self.bg_anim)
@@ -67,17 +62,26 @@ class ButtonBase(AnimationWidget):
     def on_mouse_events(self, event: wx.MouseEvent):
         event.Skip()
         if event.Entering():
-            self.bg_anim.set_sub_anim("float")
-            self.bg_anim.set_invent(invent=False)
+            if event.LeftIsDown():
+                self.mask_state = MaskState.DOWN
+                self.bg_anim.set_sub_anim("click")
+                self.bg_anim.set_invent(invent=False)
+            else:
+                self.mask_state = MaskState.BELOW
+                self.bg_anim.set_sub_anim("float")
+                self.bg_anim.set_invent(invent=False)
         elif event.Leaving():
+            self.mask_state = MaskState.NONE
             self.bg_anim.set_sub_anim("float")
             self.bg_anim.set_invent(invent=True)
         elif event.LeftDown():
+            self.mask_state = MaskState.DOWN
             self.bg_anim.set_sub_anim("click")
             self.bg_anim.set_invent(invent=False)
             event = ButtonEvent()
             wx.PostEvent(self, event)
         elif event.LeftUp():
+            self.mask_state = MaskState.BELOW
             self.bg_anim.set_sub_anim("click")
             self.bg_anim.set_invent(invent=True)
         else:
@@ -105,9 +109,9 @@ class ButtonBase(AnimationWidget):
     def load_widget_style(self, style: BtnStyle):
         super().load_widget_style(style)
         if not self.initializing_style:
-            typing.cast(ColorGradationAnimation, self.bg_anim["disable"])\
+            typing.cast(ColorGradationAnimation, self.bg_anim["disable"]) \
                 .set_color(style.bg.copy, style.bg.copy.add_luminance(-0.1))
-            typing.cast(ColorGradationAnimation, self.bg_anim["float"])\
+            typing.cast(ColorGradationAnimation, self.bg_anim["float"]) \
                 .set_color(style.bg.copy, style.float_bg.copy)
 
     def draw_content(self, gc: CustomGraphicsContext):
@@ -118,7 +122,6 @@ class ButtonBase(AnimationWidget):
         w, h = self.GetTupClientSize()
 
         border_width = self.style.border_width * SCALE
-        gc.TRANSPARENT_BRUSH
         gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.style.border_color, border_width, self.style.border_style)))
         gc.SetBrush(gc.CreateBrush(wx.Brush(self.style.bg)))
         gc.DrawRoundedRectangle(border_width / 2, border_width / 2,
@@ -149,10 +152,11 @@ class Button(ButtonBase):
 
     def draw_btn_content(self, gc: CustomGraphicsContext):
         w, h = self.GetTupClientSize()
-        self.style.fg.reset()
-        if not self.IsEnabled():
-            self.style.fg.add_luminance(-0.2)
         text_color = self.style.fg.copy
+        if not self.IsEnabled():
+            text_color.add_luminance(-0.3)
+        elif self.mask_state == MaskState.DOWN:
+            text_color.add_luminance(-0.15)
 
         gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
         label = self.GetLabel()

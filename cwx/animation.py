@@ -229,10 +229,13 @@ class MultiKeyFrameAnimation(Animation):
     def __init__(self, during: float, animations: dict[str, KeyFrameAnimation]):
         super().__init__(during)
         self.animations = animations
+        self.playing_name: str | None = None
         self.playing_anim: KeyFrameAnimation | None = None
 
     @property
     def is_playing(self) -> bool:
+        if self.playing_anim is None:
+            return False
         return self.playing_anim.is_playing
 
     def get_next_frame_time(self, fps: float):
@@ -246,6 +249,7 @@ class MultiKeyFrameAnimation(Animation):
         if self.playing_anim != self.animations[name]:
             for anim in self.animations.values():
                 anim.stop()
+        self.playing_name = name
         self.playing_anim = self.animations[name]
 
     def play(self):
