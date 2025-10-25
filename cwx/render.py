@@ -275,21 +275,6 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             self.Translate(x, y)
             GCRender.RenderInnerRoundedRect(self.gc, border_width, radius, w, h)
 
-    def CreatePen(self, pen_or_info: wx.Pen | wx.GraphicsPenInfo):
-        if isinstance(pen_or_info, wx.Pen):
-            if pen_or_info.Colour.GetAlpha() == 0:
-                return CustomGraphicsContext.TRANSPARENT_PEN
-            return self.gc.CreatePen(pen_or_info)
-        else:
-            if pen_or_info.GetColour().GetAlpha() == 0:
-                return CustomGraphicsContext.TRANSPARENT_PEN
-            return self.gc.CreatePen(pen_or_info)
-
-    def CreateBrush(self, brush: wx.Brush):
-        if brush.Colour.GetAlpha() == 0:
-            return CustomGraphicsContext.TRANSPARENT_BRUSH
-        return self.gc.CreateBrush(brush)
-
     @property
     def State(self):
         """
