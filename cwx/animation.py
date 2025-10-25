@@ -198,7 +198,14 @@ class EZKeyFrameAnimation(KeyFrameAnimation):
 
 
 class ColorGradationAnimation(KeyFrameAnimation):
-    def __init__(self, during: float, color1: wx.Colour, color2: wx.Colour, key_frames: list[KeyFrame]):
+    DEFAULT_FRAMES = [
+        KeyFrame(KeyFrameCurves.SMOOTH, 0, 0),
+        KeyFrame(KeyFrameCurves.SMOOTH, 1, 1)
+    ]
+
+    def __init__(self, during: float, color1: wx.Colour, color2: wx.Colour, key_frames=None):
+        if key_frames is None:
+            key_frames = self.DEFAULT_FRAMES
         super().__init__(during, key_frames)
         self.color1 = color1
         self.color2 = color2
@@ -248,8 +255,11 @@ class MultiKeyFrameAnimation(Animation):
         return self.playing_anim.stop()
 
     @property
-    def value(self):
+    def value(self) -> float | wx.Colour:
         return self.playing_anim.value
+
+    def __getitem__(self, item: str) -> KeyFrameAnimation:
+        return self.animations[item]
 
 
 class AnimationGroup(Animation):

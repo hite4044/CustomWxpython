@@ -251,7 +251,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
         # print(len(TheTextCacheManager.rendered_text_cache))
 
-    def GetFullTextExtent(self, text: str) -> tuple[float, float, float, float]:
+    def GetFullTextExtent(self, text: str) -> tuple | tuple[float, float, float, float]:
         if not self.enable_transparent_text:
             return typing.cast(tuple[float, float, float, float], self.gc.GetFullTextExtent(text))
         image = Image.new("RGBA", (0, 0))
@@ -274,6 +274,21 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         with self.State:
             self.Translate(x, y)
             GCRender.RenderInnerRoundedRect(self.gc, border_width, radius, w, h)
+
+    def CreatePen(self, pen_or_info: wx.Pen | wx.GraphicsPenInfo):
+        if isinstance(pen_or_info, wx.Pen):
+            if pen_or_info.Colour.GetAlpha() == 0:
+                return CustomGraphicsContext.TRANSPARENT_PEN
+            return self.gc.CreatePen(pen_or_info)
+        else:
+            if pen_or_info.GetColour().GetAlpha() == 0:
+                return CustomGraphicsContext.TRANSPARENT_PEN
+            return self.gc.CreatePen(pen_or_info)
+
+    def CreateBrush(self, brush: wx.Brush):
+        if brush.Colour.GetAlpha() == 0:
+            return CustomGraphicsContext.TRANSPARENT_BRUSH
+        return self.gc.CreateBrush(brush)
 
     @property
     def State(self):

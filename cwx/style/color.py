@@ -41,6 +41,9 @@ class EasyColor(colour.Color):
     def add_luminance(self, value: float):
         self.set_luminance(max(min(self.get_luminance() + value, 1), 0))
 
+    def add_saturation(self, value: float):
+        self.set_saturation(max(min(self.get_saturation() + value, 1), 0))
+
     @property
     def rgb_tuple(self) -> tuple[int, int, int]:
         return int(self.get_red() * 255), int(self.get_green() * 255), int(self.get_blue() * 255)
@@ -73,6 +76,11 @@ class TransformableColor(wx.Colour):
         self.Set(*self.color.rgb_tuple, self.GetAlpha())
         return self
 
+    def add_saturation(self, value: float):
+        self.color.add_saturation(value)
+        self.Set(*self.color.rgb_tuple, self.GetAlpha())
+        return self
+
     def light1(self):
         return self.add_luminance(LUM_LEVEL)
 
@@ -95,10 +103,11 @@ class TransformableColor(wx.Colour):
     def copy(self):
         return TransformableColor(wx.Colour(self.Get()))
 
-    def set_alpha(self, alpha: int):
+    def with_alpha(self, alpha: int):
         rgb: int = self.GetRGB()
-        rgba = (rgb << 8) | alpha
+        rgba = rgb | alpha << 24
         self.SetRGBA(rgba)
+        return self
 
 
 class TC(TransformableColor):
@@ -444,3 +453,5 @@ class GradientBrush(GradientColor):
 
             return gc.CreateRadialGradientBrush(*gradient_center, *stop_pt, self.radius, self.gradient_stops)
         return gc.CreateBrush(wx.Brush(self))
+
+TRANSPARENT_COLOR = wx.Colour(0, 0, 0, 0)

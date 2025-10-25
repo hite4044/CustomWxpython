@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
-from .color import *
-from .frame.struct import *
+import wx
+
 from cwx.lib.settings import GlobalSettings
 from cwx.style.frame.dwm import DWM_SYSTEMBACKDROP_TYPE, ACCENT_STATE
+from .color import *
+from .frame.struct import *
 
 
 class Style:
@@ -104,6 +106,7 @@ class FrameStyle(WidgetStyle):
     """
     accent_state: 人
     """
+
     def __init__(self, fg: wx.Colour, bg: wx.Colour,
                  caption_theme: FrameTheme,
                  backdrop_type: BackdropType,
@@ -160,23 +163,36 @@ class BtnStyle(WidgetStyle):
         :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
         """
         super().__init__(fg, bg)
+        self.float_bg = bg.copy.add_luminance(0.08)
+
         self.border_color = border_color
         self.corner_radius = corner_radius
         self.border_width = border_width
         self.border_style = border_style
 
-    @staticmethod
-    def load(style: Style) -> 'BtnStyle':
+    @classmethod
+    def load(cls, style: Style) -> 'BtnStyle':
         colors = style.colors
 
-        return BtnStyle(
+        return cls(
             fg=TC(colors.fg),
             bg=TC(ColorTransformer.light1(colors.primary)),
-            border_color=TC(ColorTransformer.with_alpha(ColorTransformer.light1(colors.primary), 128)),
+            border_color=TransformableColor(colors.primary).copy.light1().with_alpha(128),
             corner_radius=6,
             border_width=2,
             border_style=wx.PENSTYLE_SOLID
         )
+
+
+class HyperlinkBtnStyle(BtnStyle):
+    @classmethod
+    def load(cls, style: Style) -> 'BtnStyle':
+        widget_style = super().load(style)
+        widget_style.bg = TC(TRANSPARENT_COLOR)
+        widget_style.border_color = TC(TRANSPARENT_COLOR)
+        widget_style.float_bg = TC(wx.WHITE if style.is_dark else wx.BLACK).with_alpha(20).copy
+        print(widget_style.float_bg)
+        return widget_style
 
 
 class TextCtrlStyle(WidgetStyle):
