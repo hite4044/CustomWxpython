@@ -2,6 +2,7 @@ import typing
 
 import wx
 
+from cwx.style import Background
 from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState, WidgetStyle
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
@@ -15,12 +16,12 @@ class TopLevelWrapper(Widget):
 
     init_with_blur = None  # 创建窗口时默认启用模糊, True: 启用, False: 禁用, None: 跟随全局设置
 
-    def __init__(self, widget_style: TopLevelStyle | None = None, gen_style: Style | None = None):
+    def __init__(self, parent: wx.Window | None, widget_style: TopLevelStyle | None = None, gen_style: Style | None = None):
         if gen_style:
             self.gen_style = gen_style
 
         self.WindowBlurEnabled = False
-        Widget.__init__(self, self, widget_style=widget_style)
+        Widget.__init__(self, self if parent is None else parent, widget_style=widget_style)
 
         # self.Refresh = lambda :None
 
@@ -61,7 +62,7 @@ class TopLevelWrapper(Widget):
     def translate_style(style: Style) -> WidgetStyle:
         widget_style = style.frame_style
         if widget_style.accent_state.enabled or widget_style.backdrop_type.enabled:
-            widget_style.bg = wx.BLACK
+            widget_style.bg = Background(wx.BLACK)
         return widget_style
 
     def load_widget_style(self, style: TopLevelStyle):
@@ -90,12 +91,12 @@ class TopLevelWrapper(Widget):
 class Frame(wx.Frame, TopLevelWrapper):
     WND_NAME = "cwxFrame"
 
-    def __init__(self, parent: wx.Window, id: int = wx.ID_ANY, title: str = '',
+    def __init__(self, parent: wx.Window | None, id: int = wx.ID_ANY, title: str = '',
                  pos=wx.DefaultPosition, size=wx.DefaultSize, style: int = wx.DEFAULT_FRAME_STYLE,
 
                  widget_style: TopLevelStyle | None = None, gen_style: Style | None = None):
         wx.Frame.__init__(self, parent, id, title, pos, size, style, name=self.WND_NAME)
-        TopLevelWrapper.__init__(self, widget_style, gen_style)
+        TopLevelWrapper.__init__(self, parent, widget_style, gen_style)
 
         self.canvas = TopWindowCanvas(self)
 
@@ -103,11 +104,11 @@ class Frame(wx.Frame, TopLevelWrapper):
 class Dialog(wx.Dialog, TopLevelWrapper):
     WND_NAME = "cwxDialog"
 
-    def __init__(self, parent: wx.Window, id: int = wx.ID_ANY, title: str = '',
+    def __init__(self, parent: wx.Window | None, id: int = wx.ID_ANY, title: str = '',
                  pos=wx.DefaultPosition, size=wx.DefaultSize, style: int = wx.DEFAULT_DIALOG_STYLE,
 
                  widget_style: TopLevelStyle | None = None, gen_style: Style | None = None):
         wx.Dialog.__init__(self, parent, id, title, pos, size, style, name=self.WND_NAME)
-        TopLevelWrapper.__init__(self, widget_style, gen_style)
+        TopLevelWrapper.__init__(self, parent, widget_style, gen_style)
 
         self.canvas = TopWindowCanvas(self)

@@ -352,9 +352,13 @@ class TopWindowCanvas:
 
         # 在自身窗口内容上绘制子窗口内容
         # print(window.GetHandle(), "Cache Unhit - Child")
-        wnd_gc = CustomGraphicsContext(wx.GraphicsContext.Create(image))
+        low_gc = wx.GraphicsContext.Create(image)
+        low_gc.GetWindow = lambda: root_window
+        wnd_gc = CustomGraphicsContext(low_gc)
         for child in window.GetChildren():
-            if isinstance(child, Widget):
+            if isinstance(child, Widget) and not child.__class__.__name__ not in ["Frame", "Dialog"]:
+                low_gc.GetWindow = lambda: child
+                wnd_gc.window = child
                 self.draw_wnd(wnd_gc, root_window, child)
         wnd_gc.Destroy()
         gc_bitmap = gc.CreateBitmapFromImage(image)

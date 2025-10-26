@@ -9,3 +9,4 @@ from .static_text import *
 from .single_line_text_ctrl import *
 from .static_bitmap import *
 from .check_box import *
+from .message_box import *

@@ -70,6 +70,9 @@ class Frame(cwx.Frame):
 
         self.SetSizer(sizer)
 
+        dlg = cwx.MessageDialog(self, "This is a message dialog", "Message", wx.OK)
+        wx.CallLater(1000, dlg.ShowModal)
+
 
 app = wx.App()
 frame = Frame()
