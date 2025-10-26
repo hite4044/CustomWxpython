@@ -1,7 +1,3 @@
-from dataclasses import dataclass
-
-import wx
-
 from cwx.lib.settings import GlobalSettings
 from cwx.style.frame.dwm import DWM_SYSTEMBACKDROP_TYPE, ACCENT_STATE
 from .color import *
@@ -10,23 +6,23 @@ from .frame.struct import *
 
 class Style:
     default_style: 'WidgetStyle'
-    frame_style: 'FrameStyle'
+    frame_style: 'TopLevelStyle'
     btn_style: 'BtnStyle'
     textctrl_style: 'TextCtrlStyle'
     static_line_style: 'StaticLineStyle'
     progress_bar_style: 'ProgressBarStyle'
 
     def __init__(self, colors: Colors | None = None):
-        if colors is None:
-            colors = Colors.default()
-        self.colors = colors
         self.is_dark = Style.sys_is_dark()
+        if colors is None:
+            colors = Colors.default(self.is_dark)
+        self.colors = colors
 
         self.load()
 
     def load(self):
         self.default_style = EmptyStyle.load(self)
-        self.frame_style = FrameStyle.load(self)
+        self.frame_style = TopLevelStyle.load(self)
         self.btn_style = BtnStyle.load(self)
         self.textctrl_style = TextCtrlStyle.load(self)
         self.static_line_style = StaticLineStyle.load(self)
@@ -76,13 +72,86 @@ class DefaultStyleCls:
 DefaultStyle = DefaultStyleCls()
 
 
+@dataclass
+class Foreground(wx.Colour):
+    float: wx.Colour
+    pressed: wx.Colour
+    disabled: wx.Colour
+
+    def __init__(self, normal: wx.Colour,
+                 float: wx.Colour = None, pressed: wx.Colour = None, disabled: wx.Colour = None):
+        if float is None:
+            float = normal
+        if pressed is None:
+            pressed = normal
+        if disabled is None:
+            disabled = normal
+
+        super().__init__(normal)
+        self.float = float
+        self.pressed = pressed
+        self.disabled = disabled
+
+    @property
+    def normal(self):
+        return self
+
+    @normal.setter
+    def normal(self, value: wx.Colour):
+        self.SetRGBA(value.GetRGBA())
+
+    @classmethod
+    def from_colors(cls, text: Colors.TextColors):
+        return cls(text.primary, text.secondary, text.primary, text.secondary)
+
+
+@dataclass
+class Background(wx.Colour):
+    float: wx.Colour
+    pressed: wx.Colour
+    disabled: wx.Colour
+
+    def __init__(self, normal: wx.Colour,
+                 float: wx.Colour = None, pressed: wx.Colour = None, disabled: wx.Colour = None):
+        if float is None:
+            float = normal
+        if pressed is None:
+            pressed = normal
+        if disabled is None:
+            disabled = normal
+
+        super().__init__(normal)
+        self.float = float
+        self.pressed = pressed
+        self.disabled = disabled
+
+    @property
+    def normal(self):
+        return self
+
+    @normal.setter
+    def normal(self, value: wx.Colour):
+        self.SetRGBA(value.GetRGBA())
+
+    @classmethod
+    def from_colors(cls, background: Colors.BackColors):
+        return cls(background.default, background.secondary, background.tertiary, background.disabled)
+
+
 class WidgetStyle:
     """
     用于记录组件绘制的颜色、边框等信息, 注意样式信息应当不进行DPI转换
     Including information about widget's drawing, such as color, border
     """
 
-    def __init__(self, fg: wx.Colour = wx.WHITE, bg: wx.Colour = wx.BLACK):
+    fg: Foreground
+    bg: Background
+
+    def __init__(self, fg: Foreground | wx.Colour = wx.WHITE, bg: Background | wx.Colour = wx.BLACK):
+        if not isinstance(fg, Foreground):
+            fg = Foreground(fg)
+        if not isinstance(bg, Background):
+            bg = Background(bg)
         self.fg = fg
         self.bg = bg
 
@@ -93,8 +162,8 @@ class WidgetStyle:
         Translate gen style into widget style.
         """
         return WidgetStyle(
-            style.colors.fg,
-            style.colors.bg
+            Foreground.from_colors(style.colors.text),
+            Background.from_colors(style.colors.back),
         )
 
 
@@ -102,12 +171,8 @@ class EmptyStyle(WidgetStyle):
     pass
 
 
-class FrameStyle(WidgetStyle):
-    """
-    accent_state: 人
-    """
-
-    def __init__(self, fg: wx.Colour, bg: wx.Colour,
+class TopLevelStyle(WidgetStyle):
+    def __init__(self, fg: Foreground, bg: Background,
                  caption_theme: FrameTheme,
                  backdrop_type: BackdropType,
                  accent_type: AccentState,
@@ -121,11 +186,11 @@ class FrameStyle(WidgetStyle):
         """颜色记得带透明度, CT.with_alpha"""
 
     @classmethod
-    def load(cls, style: Style) -> 'FrameStyle':
+    def load(cls, style: Style) -> 'TopLevelStyle':
         colors = style.colors
         return cls(
-            fg=colors.fg,
-            bg=colors.bg,
+            fg=Foreground(wx.WHITE),
+            bg=Background(colors.bg),
             caption_theme=GlobalSettings.default_caption_theme,
             backdrop_type=GlobalSettings.default_backdrop_type,
             accent_type=GlobalSettings.default_frame_accent,
@@ -143,12 +208,12 @@ class BorderStyle:
 
 
 class BtnStyle(WidgetStyle):
-    fg: TransformableColor
-    bg: TransformableColor
+    fg: Foreground
+    bg: Background
 
     def __init__(self,
-                 fg: TransformableColor,
-                 bg: TransformableColor,
+                 fg: Foreground,
+                 bg: Background,
                  border_color: wx.Colour,
                  corner_radius: float,
                  border_width: float,
@@ -163,9 +228,6 @@ class BtnStyle(WidgetStyle):
         :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
         """
         super().__init__(fg, bg)
-        self.float_bg = TC(CT.add_luminance(bg, +0.08))
-        self.click_bg = TC(CT.add_luminance(bg, -0.08))
-
         self.border_color = border_color
         self.corner_radius = corner_radius
         self.border_width = border_width
@@ -174,13 +236,12 @@ class BtnStyle(WidgetStyle):
     @classmethod
     def load(cls, style: Style) -> 'BtnStyle':
         colors = style.colors
-
         return cls(
-            fg=TC(colors.fg),
-            bg=TC(ColorTransformer.light1(colors.primary)),
-            border_color=TransformableColor(colors.primary).copy.light1().with_alpha(128),
+            fg=Foreground.from_colors(colors.text),
+            bg=Background.from_colors(colors.back),
+            border_color=TC(colors.back.default).with_alpha(30),
             corner_radius=6,
-            border_width=2,
+            border_width=1,
             border_style=wx.PENSTYLE_SOLID
         )
 
@@ -189,10 +250,9 @@ class HyperlinkBtnStyle(BtnStyle):
     @classmethod
     def load(cls, style: Style) -> 'BtnStyle':
         widget_style = super().load(style)
-        widget_style.bg = TC(TRANSPARENT_COLOR)
-        widget_style.border_color = TC(TRANSPARENT_COLOR)
-        widget_style.float_bg = TC(CT.with_alpha(wx.WHITE if style.is_dark else wx.BLACK, 20))
-        widget_style.click_bg = TC(CT.add_luminance(widget_style.float_bg, -0.2))
+        widget_style.bg.normal = TRANSPARENT_COLOR
+        widget_style.bg.disabled = TRANSPARENT_COLOR
+        widget_style.border_color = TRANSPARENT_COLOR
         return widget_style
 
 

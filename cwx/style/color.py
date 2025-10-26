@@ -1,5 +1,6 @@
 import ctypes
 from ctypes import wintypes
+from dataclasses import dataclass
 from enum import Enum
 
 import colour
@@ -182,12 +183,49 @@ TheDefaultColors: DefaultColors = DelayInitWrapper(DefaultColors)
 
 
 class Colors:
+    @dataclass
+    class TextColors:
+        primary: wx.Colour
+        secondary: wx.Colour
+        tertiary: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                primary=wx.WHITE if for_dark else wx.Colour(26, 26, 26),
+                secondary=wx.Colour(204, 204, 204) if for_dark else wx.Colour(92, 92, 92),
+                tertiary=wx.Colour(150, 150, 150) if for_dark else wx.Colour(134, 134, 134),
+                disabled=wx.Colour(113, 113, 113) if for_dark else wx.Colour(155, 155, 155)
+            )
+
+    @dataclass
+    class BackColors:
+        default: wx.Colour
+        secondary: wx.Colour
+        tertiary: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                default=CT.with_alpha(wx.WHITE, 20) if for_dark else wx.Colour(26, 26, 26),  # Rest
+                secondary=CT.with_alpha(wx.WHITE, 30) if for_dark else wx.Colour(26, 26, 26),  # Hover
+                tertiary=CT.with_alpha(wx.WHITE, 10) if for_dark else wx.Colour(26, 26, 26),  # Pressed
+                disabled=CT.with_alpha(wx.WHITE, 15) if for_dark else wx.Colour(26, 26, 26),  # Disabled
+            )
+
     def __init__(self,
+                 text: TextColors,
+                 back: BackColors,
                  primary: wx.Colour,
                  secondary: wx.Colour,
                  fg: wx.Colour,
                  bg: wx.Colour,
                  border: wx.Colour):
+        self.text = text
+        self.back = back
+
         self.primary = primary
         self.secondary = secondary
         self.fg = fg
@@ -203,8 +241,10 @@ class Colors:
         return ColorTransformer.with_alpha(self.bg, 40)
 
     @staticmethod
-    def default():
+    def default(for_dark: bool):
         return Colors(
+            text=Colors.TextColors.load(for_dark),
+            back=Colors.BackColors.load(for_dark),
             primary=TheDefaultColors.PRIMARY,
             secondary=wx.Colour(85, 85, 85, 128),
             fg=wx.Colour(255, 255, 255),
@@ -453,5 +493,6 @@ class GradientBrush(GradientColor):
 
             return gc.CreateRadialGradientBrush(*gradient_center, *stop_pt, self.radius, self.gradient_stops)
         return gc.CreateBrush(wx.Brush(self))
+
 
 TRANSPARENT_COLOR = wx.Colour(0, 0, 0, 0)

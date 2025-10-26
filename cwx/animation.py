@@ -117,7 +117,7 @@ class KeyFrameAnimation(Animation):
 
     def play(self):
         super().play()
-        print(f"Playing Animation: During: {self.during}, percent_offset: {self.percent_offset}")
+        # print(f"Playing Animation: During: {self.during}, percent_offset: {self.percent_offset}")
 
     def get_next_frame_time(self, fps: float):
         frame_time = 1 / fps

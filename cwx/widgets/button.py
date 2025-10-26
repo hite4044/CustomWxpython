@@ -8,6 +8,7 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
+from ..event import SimpleCommandEvent
 from ..animation import MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
 from ..render import CustomGraphicsContext
@@ -17,9 +18,8 @@ cwxEVT_BUTTON = wx.NewEventType()
 EVT_BUTTON = wx.PyEventBinder(cwxEVT_BUTTON, 1)
 
 
-class ButtonEvent(wx.PyCommandEvent):
-    def __init__(self):
-        super().__init__(cwxEVT_BUTTON, wx.ID_ANY)
+class ButtonEvent(SimpleCommandEvent):
+    eventType: int = cwxEVT_BUTTON
 
 
 class ButtonBase(AnimationWidget):
@@ -39,24 +39,19 @@ class ButtonBase(AnimationWidget):
 
         self.bg_anim = MultiKeyFrameAnimation \
             (0.2,
-             {"float": ColorGradationAnimation(0.1, self.style.bg.copy, self.style.float_bg.copy),
-              "click": ColorGradationAnimation(0.1, self.style.float_bg.copy, self.style.click_bg.copy),
-              "disable": ColorGradationAnimation(0.1, self.style.bg.copy, self.style.bg.copy.add_luminance(-0.1))
+             {"float": ColorGradationAnimation(0.1, self.style.bg.normal, self.style.bg.float),
+              "click": ColorGradationAnimation(0.1, self.style.bg.float, self.style.bg.pressed),
+              "disable": ColorGradationAnimation(0.1, self.style.bg.normal, self.style.bg.disabled)
               })
 
         self.reg_animation("bg", self.bg_anim)
 
     def animation_callback(self):
         if self.bg_anim.is_playing:
-            data = self.bg_anim.value
+            self.style.bg = self.bg_anim.value
         else:
             return
 
-        self.style.bg.reset()
-        if isinstance(data, float):
-            self.style.bg.add_luminance(data)
-        else:
-            self.style.bg = TransformableColor(data)
         self.Refresh()
 
     def on_mouse_events(self, event: wx.MouseEvent):
@@ -78,8 +73,7 @@ class ButtonBase(AnimationWidget):
             self.mask_state = MaskState.DOWN
             self.bg_anim.set_sub_anim("click")
             self.bg_anim.set_invent(invent=False)
-            event = ButtonEvent()
-            wx.PostEvent(self, event)
+            self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
             self.mask_state = MaskState.BELOW
             self.bg_anim.set_sub_anim("click")
@@ -109,10 +103,8 @@ class ButtonBase(AnimationWidget):
     def load_widget_style(self, style: BtnStyle):
         super().load_widget_style(style)
         if not self.initializing_style:
-            typing.cast(ColorGradationAnimation, self.bg_anim["disable"]) \
-                .set_color(style.bg.copy, style.bg.copy.add_luminance(-0.1))
-            typing.cast(ColorGradationAnimation, self.bg_anim["float"]) \
-                .set_color(style.bg.copy, style.float_bg.copy)
+            typing.cast(ColorGradationAnimation, self.bg_anim["float"]).set_color(style.bg.normal, style.bg.float)
+            typing.cast(ColorGradationAnimation, self.bg_anim["disable"]).set_color(style.bg.normal, style.bg.disabled)
 
     def draw_content(self, gc: CustomGraphicsContext):
         self.draw_btn_background(gc)  # 绘制背景
@@ -152,11 +144,12 @@ class Button(ButtonBase):
 
     def draw_btn_content(self, gc: CustomGraphicsContext):
         w, h = self.GetTupClientSize()
-        text_color = self.style.fg.copy
         if not self.IsEnabled():
-            text_color.add_luminance(-0.3)
-        elif self.mask_state == MaskState.DOWN:
-            text_color.add_luminance(-0.15)
+            text_color = self.style.fg.disabled
+        else:
+            text_color = {MaskState.NONE: self.style.fg.normal,
+                          MaskState.BELOW: self.style.fg.normal,
+                          MaskState.DOWN: self.style.fg.pressed}[self.mask_state]
 
         gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
         label = self.GetLabel()

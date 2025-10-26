@@ -15,7 +15,7 @@ class Frame(cwx.Frame):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
         style = cwx.DefaultStyle.DEFAULT
         style.set_as_dark()
-        style.frame_style.backdrop_type = cwx.BackdropType.ACRYLIC
+        style.frame_style.backdrop_type = cwx.BackdropType.MICA
 
         self.load_style(style)
 
@@ -29,10 +29,10 @@ class Frame(cwx.Frame):
 
         sizer.Add(st)
 
-        btn = cwx.Button(self, "点我啊!")
+        btn = cwx.HyperlinkButton(self, "点我啊!")
         sizer.Add(btn, 0)
 
-        btn = cwx.HyperlinkButton(self, "点我啊!")
+        btn = cwx.Button(self, "Standard XAML Button")
         sizer.Add(btn, 0)
 
         sizer.AddSpacer(5)

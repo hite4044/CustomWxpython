@@ -102,6 +102,11 @@ class Widget(wx.Window):
     def GetTupClientSize(self) -> tuple[int, int]:
         return tuple(typing.cast(tuple[int, int], super().GetClientSize().GetIM()))
 
+    def SetId(self, winid) -> 'Widget':
+        """此方法返回组件自身"""
+        super().SetId(winid)
+        return self
+
     # 一些关于大小设置的DPI替换
     # Some method hook about setting size.
 
