@@ -47,7 +47,7 @@ class CheckBox(AnimationWidget):
         self.mask_state: MaskState = MaskState.NONE  # 指示是否绘制点击图层
         self.check_sym_am = self.reg_anim_element("check", DrawLinesAE(MAKE_ANIMATION(0.2, KeyFrameCurves.SMOOTH), []))
 
-        self.text_extent: tuple[float, float] = (1.0, 1.0)
+        self.text_extent: tuple[float, float, float, float] = (1.0, 1.0, 0.0, 0.0)
 
         self.SetLabel(label)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_events)

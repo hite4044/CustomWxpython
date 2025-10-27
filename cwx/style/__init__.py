@@ -253,6 +253,12 @@ class HyperlinkBtnStyle(BtnStyle):
         widget_style.bg.normal = TRANSPARENT_COLOR
         widget_style.bg.disabled = TRANSPARENT_COLOR
         widget_style.border_color = TRANSPARENT_COLOR
+
+        widget_style.fg.normal = style.colors.accent_text.primary
+        widget_style.fg.float = style.colors.accent_text.secondary
+        widget_style.fg.pressed = style.colors.accent_text.tertiary
+        widget_style.fg.disabled = style.colors.text.disabled
+
         return widget_style
 
 

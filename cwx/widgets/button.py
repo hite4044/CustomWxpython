@@ -30,6 +30,7 @@ class ButtonBase(AnimationWidget):
         """按钮基类"""
         super().__init__(parent, widget_style=widget_style, fps=60)
         self.mask_state = MaskState.NONE
+        self.crt_bg = wx.Colour(self.style.bg)
         self.init_animation()
 
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_events)
@@ -39,16 +40,16 @@ class ButtonBase(AnimationWidget):
 
         self.bg_anim = MultiKeyFrameAnimation \
             (0.2,
-             {"float": ColorGradationAnimation(0.1, self.style.bg.normal, self.style.bg.float),
+             {"float": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.float),
               "click": ColorGradationAnimation(0.1, self.style.bg.float, self.style.bg.pressed),
-              "disable": ColorGradationAnimation(0.1, self.style.bg.normal, self.style.bg.disabled)
+              "disable": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.disabled)
               })
 
         self.reg_animation("bg", self.bg_anim)
 
     def animation_callback(self):
         if self.bg_anim.is_playing:
-            self.style.bg = self.bg_anim.value
+            self.crt_bg = self.bg_anim.value
         else:
             return
 
@@ -92,7 +93,7 @@ class ButtonBase(AnimationWidget):
 
     def update_size(self):
         width, height = self.get_content_size()
-        size = (int(width + 40 * SCALE), int(height + 15 * SCALE))
+        size = (int(width + 32 * SCALE), int(height + 16 * SCALE))
         self.RawSetSize(size)
         self.RawSetMinSize(size)
 
@@ -115,7 +116,7 @@ class ButtonBase(AnimationWidget):
 
         border_width = self.style.border_width * SCALE
         gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.style.border_color, border_width, self.style.border_style)))
-        gc.SetBrush(gc.CreateBrush(wx.Brush(self.style.bg)))
+        gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
         gc.DrawRoundedRectangle(border_width / 2, border_width / 2,
                                 w - border_width, h - border_width,
                                 self.style.corner_radius * SCALE)

@@ -215,8 +215,25 @@ class Colors:
                 disabled=CT.with_alpha(wx.WHITE, 15) if for_dark else wx.Colour(26, 26, 26),  # Disabled
             )
 
+    @dataclass
+    class AccentText:
+        primary: wx.Colour
+        secondary: wx.Colour
+        tertiary: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                primary=TheDefaultColors.PRIMARY,
+                secondary=TheDefaultColors.PRIMARY,
+                tertiary=TheDefaultColors.PRIMARY,
+                disabled=wx.Colour(113, 113, 113) if for_dark else wx.Colour(155, 155, 155),
+            )
+
     def __init__(self,
                  text: TextColors,
+                 accent_text: AccentText,
                  back: BackColors,
                  primary: wx.Colour,
                  secondary: wx.Colour,
@@ -224,6 +241,7 @@ class Colors:
                  bg: wx.Colour,
                  border: wx.Colour):
         self.text = text
+        self.accent_text = accent_text
         self.back = back
 
         self.primary = primary
@@ -244,6 +262,7 @@ class Colors:
     def default(for_dark: bool):
         return Colors(
             text=Colors.TextColors.load(for_dark),
+            accent_text=Colors.AccentText.load(for_dark),
             back=Colors.BackColors.load(for_dark),
             primary=TheDefaultColors.PRIMARY,
             secondary=wx.Colour(85, 85, 85, 128),
