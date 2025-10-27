@@ -124,7 +124,8 @@ class AnimationElement:
 
 
 class DrawLinesAE(AnimationElement):
-    def __init__(self, anim: Animation, point2Ds: list[wx.Point2D] = None, fill_style: wx.PolygonFillMode = wx.ODDEVEN_RULE):
+    def __init__(self, anim: Animation, point2Ds: list[wx.Point2D] = None,
+                 fill_style: wx.PolygonFillMode = wx.ODDEVEN_RULE):
         super().__init__(anim)
         self.point2Ds: list[wx.Point2D] = point2Ds
         self.fill_style = fill_style
@@ -353,17 +354,20 @@ class GCRender:
             return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
 
         # 绘制文字
-        image = Image.new("RGBA", typing.cast(tuple[int, int], (ceil(right - left), ceil(bottom - top + OFFSET))))
+        delta_x, delta_y = round(info.pos_decimal[0]), round(info.pos_decimal[1])
+        image = Image.new("RGBA", (ceil(right - left) + delta_x, ceil(bottom - top + OFFSET * 2) + delta_y))
         draw = ImageDraw.Draw(image)
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
-        draw.text((info.pos_decimal[0] - left, info.pos_decimal[1] - top + OFFSET),
+        draw.text((int(info.pos_decimal[0] - left), int(info.pos_decimal[1] - top + OFFSET)),
                   info.text, fill=color, font=font, spacing=SPACING)  # , embedded_color=True
+        # draw.polygon([(0, 0), (0, image.height - 1), (image.width - 1, image.height - 1), (image.width - 1, 0)],
+        #              fill=None, outline=(255, 0, 0))
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)
         return (
             gc.CreateBitmapFromImage(wx_image),
-            typing.cast(tuple[int, int], wx_image.GetSize().Get())
+            image.size
         )
 
     @staticmethod
