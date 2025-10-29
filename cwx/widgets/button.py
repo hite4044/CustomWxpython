@@ -2,6 +2,7 @@
 按钮
 """
 import typing
+import webbrowser
 from typing import cast as type_cast
 
 import wx
@@ -74,6 +75,7 @@ class ButtonBase(AnimationWidget):
             self.mask_state = MaskState.DOWN
             self.bg_anim.set_sub_anim("click")
             self.bg_anim.set_invent(invent=False)
+            self.on_button()
             self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
             self.mask_state = MaskState.BELOW
@@ -83,6 +85,10 @@ class ButtonBase(AnimationWidget):
             return
         self.play_animation("bg")
         self.Refresh()
+
+    def on_button(self):
+        """点击时触发, 该函数比EVT_BUTTON早触发, 为特殊按钮类的功能提供支持"""
+        pass
 
     def Enable(self, enable: bool = True):
         super().Enable(enable)
@@ -129,7 +135,12 @@ class ButtonBase(AnimationWidget):
 
 
 class Button(ButtonBase):
+    """一个普通按钮"""
     def __init__(self, parent: wx.Window, label: str, widget_style: BtnStyle = None):
+        """
+        Args:
+            label: 按钮的标签
+        """
         super().__init__(parent, widget_style=widget_style)
         self.SetLabel(label)
 
@@ -159,8 +170,28 @@ class Button(ButtonBase):
 
 
 class HyperlinkButton(Button):
-    def __init__(self, parent: wx.Window, label: str, widget_style: BtnStyle = None):
+    """点击可以跳转至特定网址的按钮"""
+    def __init__(self, parent: wx.Window, label: str, url: str = None, widget_style: HyperlinkBtnStyle = None):
+        """
+        Args:
+            url: 网页的网址
+            label: 按钮的标签
+        """
         super().__init__(parent, label, widget_style=widget_style)
+        self.url = url
+        """链接至的网页的URL"""
+        self.open_new = 0
+        """
+        - 0: 在默认的浏览器窗口 (默认).
+        - 1: 一个新的浏览器窗口.
+        - 2: 一个新的浏览器标签页.
+        """
+        self.auto_raise = True
+        """如果可能, 自动弹出浏览器窗口 (默认) 或不弹出."""
+
+    def on_button(self):
+        if self.url is not None:
+            webbrowser.open(self.url, self.open_new, self.auto_raise)
 
     @staticmethod
     def translate_style(style: Style):
