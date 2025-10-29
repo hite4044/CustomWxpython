@@ -226,8 +226,8 @@ class ColorGradationAnimation(KeyFrameAnimation):
 
 
 class MultiKeyFrameAnimation(Animation):
-    def __init__(self, during: float, animations: dict[str, KeyFrameAnimation]):
-        super().__init__(during)
+    def __init__(self, animations: dict[str, KeyFrameAnimation]):
+        super().__init__(1.0)
         self.animations = animations
         self.playing_name: str | None = None
         self.playing_anim: KeyFrameAnimation | None = None
@@ -264,6 +264,10 @@ class MultiKeyFrameAnimation(Animation):
 
     def __getitem__(self, item: str) -> KeyFrameAnimation:
         return self.animations[item]
+
+    @property
+    def during(self):
+        return self.playing_anim.during
 
 
 class AnimationGroup(Animation):

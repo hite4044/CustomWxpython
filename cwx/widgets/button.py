@@ -40,8 +40,7 @@ class ButtonBase(AnimationWidget):
         """初始按钮动画的函数"""
 
         self.bg_anim = MultiKeyFrameAnimation \
-            (0.2,
-             {"float": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.float),
+            ({"float": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.float),
               "click": ColorGradationAnimation(0.1, self.style.bg.float, self.style.bg.pressed),
               "disable": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.disabled)
               })
