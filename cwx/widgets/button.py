@@ -13,7 +13,7 @@ from ..event import SimpleCommandEvent
 from ..animation import MultiKeyFrameAnimation, ColorGradationAnimation
 from ..dpi import SCALE
 from ..render import CustomGraphicsContext
-from ..style import Style, BtnStyle, TransformableColor, HyperlinkBtnStyle
+from ..style import Style, BtnStyle, HyperlinkBtnStyle
 
 cwxEVT_BUTTON = wx.NewEventType()
 EVT_BUTTON = wx.PyEventBinder(cwxEVT_BUTTON, 1)
@@ -122,9 +122,9 @@ class ButtonBase(AnimationWidget):
         border_width = self.style.border_width * SCALE
         gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.style.border_color, border_width, self.style.border_style)))
         gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
-        gc.DrawRoundedRectangle(border_width / 2, border_width / 2,
+        gc.DrawInnerRoundedRect(border_width / 2, border_width / 2,
                                 w - border_width, h - border_width,
-                                self.style.corner_radius * SCALE)
+                                self.style.corner_radius * SCALE, border_width)
 
     def draw_btn_content(self, gc: CustomGraphicsContext):
         pass

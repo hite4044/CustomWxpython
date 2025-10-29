@@ -265,10 +265,6 @@ class MultiKeyFrameAnimation(Animation):
     def __getitem__(self, item: str) -> KeyFrameAnimation:
         return self.animations[item]
 
-    @property
-    def during(self):
-        return self.playing_anim.during
-
 
 class AnimationGroup(Animation):
     def __init__(self, group: dict[str, Animation]):
