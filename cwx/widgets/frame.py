@@ -2,7 +2,6 @@ import typing
 
 import wx
 
-from cwx import TRANSPARENT_COLOR
 from cwx.render import CustomGraphicsContext
 from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
@@ -65,15 +64,12 @@ class TopLevelWrapper(Widget):
     @staticmethod
     def translate_style(style: Style) -> TopLevelStyle:
         widget_style = style.frame_style
-        print("ST", style.frame_style.bg, widget_style.is_default_bg)
         if widget_style.is_default_bg and (widget_style.accent_state.enabled or widget_style.backdrop_type.enabled):
             widget_style.raw_bg = wx.BLACK
-        print("ST*", style.frame_style.bg)
         return widget_style
 
     def load_widget_style(self, style: TopLevelStyle):
         super().load_widget_style(style)
-        print("ST2", self.style.bg)
 
         enable_comp = enable_backdrop = False
         self.SetCaptionTheme(style.caption_theme)
@@ -91,7 +87,6 @@ class TopLevelWrapper(Widget):
         #     super().SetBackgroundColour(wx.BLACK)
 
     def draw_content(self, gc: CustomGraphicsContext):
-        print("CD", self.style.bg)
         if not self.style.is_default_bg:
             gc.SetBrush(wx.Brush(self.style.bg))
             gc.DrawRectangle(0, 0, *self.GetClientSize())
