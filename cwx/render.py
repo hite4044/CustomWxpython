@@ -8,7 +8,7 @@ from io import BytesIO
 from math import ceil
 
 import wx
-from PIL import ImageFont, Image, ImageDraw
+from PIL import ImageFont, Image, ImageDraw, ImageEnhance
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
@@ -340,6 +340,7 @@ class GCRender:
     @staticmethod
     def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font) -> \
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
+        """渲染一个透明度文字"""
         window = gc.GetWindow()
         font = GCRender.GetFontByHandle(wx_font)
 
@@ -358,10 +359,14 @@ class GCRender:
         image = Image.new("RGBA", (ceil(right - left) + delta_x, ceil(bottom - top + OFFSET * 2) + delta_y))
         draw = ImageDraw.Draw(image)
         color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
+        color = color[:3]
         draw.text((int(info.pos_decimal[0] - left), int(info.pos_decimal[1] - top + OFFSET)),
-                  info.text, fill=color, font=font, spacing=SPACING)  # , embedded_color=True
-        # draw.polygon([(0, 0), (0, image.height - 1), (image.width - 1, image.height - 1), (image.width - 1, 0)],
-        #              fill=None, outline=(255, 0, 0))
+                  info.text, fill=color, font=font, spacing=SPACING)
+
+        # 增强文字遮罩
+        alpha = image.getchannel("A")  # 获取文字遮罩
+        alpha = ImageEnhance.Brightness(alpha).enhance(1.25)  # 增加亮度
+        image.putalpha(alpha)  # 应用增强后的透明度
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)
