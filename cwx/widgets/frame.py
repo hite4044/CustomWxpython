@@ -46,7 +46,7 @@ class TopLevelWrapper(Widget):
         return enable
 
     def SetBackdropType(self, backdrop_type: BackdropType):
-        """设置窗口背景类型"""
+        """设置窗口背景类型, 仅在Win11+起效"""
         enable = backdrop_type not in (BackdropType.AUTO, BackdropType.NONE)
         DwmExtendFrameIntoClientArea(self.GetHandle(), enable)
         set_window_backdrop(self.GetHandle(), backdrop_type.value)
@@ -81,10 +81,6 @@ class TopLevelWrapper(Widget):
         self.WindowBlurEnabled = enable_comp or enable_backdrop
 
         super().SetForegroundColour(style.fg)
-        # if style.accent_state in (AccentState.DONT_SET, AccentState.DISABLE):
-        #     super().SetBackgroundColour(style.bg)
-        # else:
-        #     super().SetBackgroundColour(wx.BLACK)
 
     def draw_content(self, gc: CustomGraphicsContext):
         if not self.style.is_default_bg:
