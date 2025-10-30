@@ -2,8 +2,9 @@ import typing
 
 import wx
 
-from cwx.style import Background
-from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState, WidgetStyle
+from cwx import TRANSPARENT_COLOR
+from cwx.render import CustomGraphicsContext
+from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
 from cwx.widgets import Widget, TopWindowCanvas
@@ -11,12 +12,14 @@ from cwx.widgets import Widget, TopWindowCanvas
 
 class TopLevelWrapper(Widget):
     """请使用Frame或者Dialog, 这个创建的窗口关闭不了"""
+    style: TopLevelStyle
     init_wnd = False
     enable_double_buffer = False
 
     init_with_blur = None  # 创建窗口时默认启用模糊, True: 启用, False: 禁用, None: 跟随全局设置
 
-    def __init__(self, parent: wx.Window | None, widget_style: TopLevelStyle | None = None, gen_style: Style | None = None):
+    def __init__(self, parent: wx.Window | None, widget_style: TopLevelStyle | None = None,
+                 gen_style: Style | None = None):
         if gen_style:
             self.gen_style = gen_style
 
@@ -24,6 +27,7 @@ class TopLevelWrapper(Widget):
         Widget.__init__(self, self if parent is None else parent, widget_style=widget_style)
 
         # self.Refresh = lambda :None
+        super().SetBackgroundColour(wx.BLACK)
 
     def EnableWindowComposition(self,
                                 enable: bool = True,
@@ -59,14 +63,17 @@ class TopLevelWrapper(Widget):
         set_caption_color(self.GetHandle(), typing.cast(tuple[int, int, int], color.Get()))
 
     @staticmethod
-    def translate_style(style: Style) -> WidgetStyle:
+    def translate_style(style: Style) -> TopLevelStyle:
         widget_style = style.frame_style
-        if widget_style.accent_state.enabled or widget_style.backdrop_type.enabled:
-            widget_style.bg = Background(wx.BLACK)
+        print("ST", style.frame_style.bg, widget_style.is_default_bg)
+        if widget_style.is_default_bg and (widget_style.accent_state.enabled or widget_style.backdrop_type.enabled):
+            widget_style.raw_bg = wx.BLACK
+        print("ST*", style.frame_style.bg)
         return widget_style
 
     def load_widget_style(self, style: TopLevelStyle):
         super().load_widget_style(style)
+        print("ST2", self.style.bg)
 
         enable_comp = enable_backdrop = False
         self.SetCaptionTheme(style.caption_theme)
@@ -78,14 +85,16 @@ class TopLevelWrapper(Widget):
         self.WindowBlurEnabled = enable_comp or enable_backdrop
 
         super().SetForegroundColour(style.fg)
-        if style.accent_state in (AccentState.DONT_SET, AccentState.DISABLE):
-            super().SetBackgroundColour(style.bg)
-        else:
-            super().SetBackgroundColour(wx.BLACK)
-    #
-    # def draw_content(self, gc: CustomGraphicsContext):
-    #     gc.SetBrush(wx.Brush(self.style.bg))
-    #     gc.DrawRectangle(0, 0, *self.GetClientSize())
+        # if style.accent_state in (AccentState.DONT_SET, AccentState.DISABLE):
+        #     super().SetBackgroundColour(style.bg)
+        # else:
+        #     super().SetBackgroundColour(wx.BLACK)
+
+    def draw_content(self, gc: CustomGraphicsContext):
+        print("CD", self.style.bg)
+        if not self.style.is_default_bg:
+            gc.SetBrush(wx.Brush(self.style.bg))
+            gc.DrawRectangle(0, 0, *self.GetClientSize())
 
 
 class Frame(wx.Frame, TopLevelWrapper):

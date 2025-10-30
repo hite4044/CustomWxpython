@@ -13,36 +13,40 @@ Num = int | float
 
 
 class Animation:
-    def __init__(self, during: float, range_: tuple[Num, Num] = None):
-        self.during = during
-        self.range = range_
-        self.is_invent = False
-        self.has_start = False
-        self.has_finish = False
+    """一个动画, """
+    def __init__(self, during: float):
+        self.during = during  # 持续时间
+        self.is_invent = False   # 是否为倒放
+        self.has_finish = False  # 动画是否结束
 
-        self.playing_start = -1
+        self.playing_start = -1  # 动画开始时间
 
     def set_invent(self, invent: bool):
         self.is_invent = invent
 
     def play(self):
+        """播放动画, 并切换至动画的开头"""
         self.playing_start = perf_counter()
         self.has_finish = False
 
     def stop(self):
+        """停止动画, 并切换至动画的结尾"""
         self.playing_start = -1
         self.has_finish = True
 
     @property
     def is_playing(self) -> bool:
+        """是否正在播放动画"""
         return self.playing_start != -1 and not self.has_finish
 
     @property
     def raw_percent(self):
+        """播放中, 获取当前动画播放的百分比"""
         return (perf_counter() - self.playing_start) / self.during
 
     @property
     def value(self) -> float:
+        """动画的值"""
         if self.is_playing:
             percent = self.raw_percent
             if not self.has_finish and percent > 1:
@@ -69,7 +73,8 @@ class Animation:
 
 class BlinkAnimation(Animation):
     def __init__(self, range_: tuple[Num, Num], threshold: float):
-        super().__init__(0, range_)
+        super().__init__(0)
+        self.range = range_
         self.threshold = threshold
 
     def raw_get_value(self, percent: float) -> Num:
@@ -77,31 +82,44 @@ class BlinkAnimation(Animation):
 
 
 class KeyFrameCurves(Enum):
-    BLINK = 0  # 突然闪现
-    SMOOTH = 1  # 平滑匀速运动
+    """动画曲线, 用于KeyFrame(动画关键帧)"""
+    BLINK = 0
+    "突然闪现"
 
-    EASE_IN = 2  # 缓入
-    QUADRATIC_EASE_IN = 3  # 二次方缓入
-    CUBE_EASE_IN = 4  # 三次方缓入
+    SMOOTH = 1
+    "平滑匀速运动"
 
-    EASE_OUT = 5  # 缓出
-    QUADRATIC_EASE_OUT = 6  # 二次方缓出
-    CUBE_EASE_OUT = 7  # 三次方缓出
+    EASE_IN = 2
+    "缓入"
+    QUADRATIC_EASE_IN = 3
+    "二次方缓入"
+    CUBE_EASE_IN = 4
+    "三次方缓入"
 
-    QUADRATIC_EASE = 8  # 二次方缓动
-    CUBE_EASE = 9  # 三次方缓动
+    EASE_OUT = 5
+    "缓出"
+    QUADRATIC_EASE_OUT = 6
+    "二次方缓出"
+    CUBE_EASE_OUT = 7
+    "三次方缓出"
+
+    QUADRATIC_EASE = 8
+    "二次方缓动"
+    CUBE_EASE = 9
+    "三次方缓动"
 
 
 @dataclass
 class KeyFrame:
-    way: KeyFrameCurves
-    percent: float
-    data: float
+    """动画关键帧"""
+    way: KeyFrameCurves  # 动画曲线
+    percent: float  # 动画百分比
+    data: float  # 指定百分比的数据值
 
 
 class KeyFrameAnimation(Animation):
     def __init__(self, during: float, key_frames: list[KeyFrame]):
-        super().__init__(during, None)
+        super().__init__(during)
         self.percents: list[float] = sorted((key_frame.percent for key_frame in key_frames))
         self.key_frames: list[KeyFrame] = sorted((key_frame for key_frame in key_frames), key=lambda x: x.percent)
         if 0 not in self.percents:
@@ -267,6 +285,8 @@ class MultiKeyFrameAnimation(Animation):
 
 
 class AnimationGroup(Animation):
+    """动画组"""
+
     def __init__(self, group: dict[str, Animation]):
         super().__init__(1.0)
         self.animations = group

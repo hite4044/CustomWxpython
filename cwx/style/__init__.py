@@ -172,29 +172,40 @@ class EmptyStyle(WidgetStyle):
 
 
 class TopLevelStyle(WidgetStyle):
-    def __init__(self, fg: Foreground, bg: Background,
+    bg: wx.Colour
+
+    def __init__(self, bg: Background,
                  caption_theme: FrameTheme,
                  backdrop_type: BackdropType,
                  accent_type: AccentState,
                  accent_color: wx.Colour | None = None):
-        super().__init__(fg, bg)
+        super().__init__(bg=bg)
+        self.raw_bg = bg
+        self.is_default_bg = True
         self.caption_theme = caption_theme
         self.backdrop_type = backdrop_type
 
         self.accent_state = accent_type
         self.accent_color: wx.Colour | None = accent_color  # 颜色记得带透明度, CT.with_alpha
-        """颜色记得带透明度, CT.with_alpha"""
+        "颜色记得带透明度, CT.with_alpha"
 
     @classmethod
     def load(cls, style: Style) -> 'TopLevelStyle':
-        colors = style.colors
         return cls(
-            fg=Foreground(wx.WHITE),
-            bg=Background(colors.bg),
+            bg=Background(TRANSPARENT_COLOR),
             caption_theme=GlobalSettings.default_caption_theme,
             backdrop_type=GlobalSettings.default_backdrop_type,
             accent_type=GlobalSettings.default_frame_accent,
         )
+
+    @property
+    def bg(self):
+        return self.raw_bg
+
+    @bg.setter
+    def bg(self, value: wx.Colour):
+        self.raw_bg = value
+        self.is_default_bg = False
 
 
 @dataclass
@@ -387,3 +398,18 @@ class CheckBoxStyle(WidgetStyle):
             3,
             20
         )
+
+
+class ToggleSwitchStyle(WidgetStyle):
+    def __init__(self,
+                 box_bg: GradientBrush, box_hover_bg: GradientBrush, box_active_bg: GradientBrush,
+                 box_border: GradientPen, box_sym: GradientBrush,
+                 ):
+        super().__init__()
+        self.box_bg: GradientBrush = box_bg
+        self.box_hover_bg: GradientBrush = box_hover_bg
+        self.box_active_bg: GradientBrush = box_active_bg
+        self.box_border: GradientPen = box_border
+        self.box_sym: GradientBrush = box_sym
+
+        self.box_radius: float = 10

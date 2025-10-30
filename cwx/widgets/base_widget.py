@@ -219,7 +219,7 @@ class CanvasCache:
 class TopWindowCanvas:
     """在一个顶层窗口的画布上绘制所有CWX控件的内容, 从而支持各控件重叠进行透明度渲染"""
 
-    def __init__(self, canvas_host: wx.TopLevelWindow):
+    def __init__(self, canvas_host: Widget):
         canvas_host.CWX_canvas = self
         self.canvas_host = canvas_host
 
@@ -259,7 +259,7 @@ class TopWindowCanvas:
     def on_host_size(self, event: wx.SizeEvent):
         event.Skip()
         self.canvas_host.Refresh()
-        self.canvas_host.Layout()
+        # self.canvas_host.Layout()
 
     def on_window_size(self, event: wx.SizeEvent):
         event.Skip()
@@ -296,6 +296,7 @@ class TopWindowCanvas:
 
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(dc))
         dc.Clear()
+        self.canvas_host.draw_content(gc)
         for child in self.canvas_host.GetChildren():
             if isinstance(child, Widget):
                 self.draw_wnd(gc, self.canvas_host, child)
