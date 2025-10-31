@@ -46,5 +46,5 @@ def set_frame_dark(hwnd: int, is_dark: bool = True):
 
 
 def set_window_backdrop(hwnd: int, backdrop_type: int):
-    """设置窗口的背景"""
+    """设置窗口的背景类型, win11+"""
     DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, ctypes.c_int(backdrop_type))

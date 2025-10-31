@@ -5,7 +5,7 @@ import wx
 
 from .animation_widget import AnimationWidget
 from ..render import CustomGraphicsContext
-from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradationAnimation
+from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradientAnimation
 from ..dpi import SCALE
 from ..style import Style, TextCtrlStyle
 
@@ -37,10 +37,10 @@ class TextCtrl(AnimationWidget):
         self.cursor_pos_anim = EZKeyFrameAnimation(0.15, KeyFrameCurves.QUADRATIC_EASE, -1, -1)
         self.border_width = EZKeyFrameAnimation(0.15, KeyFrameCurves.SMOOTH, self.style.border_width,
                                                 self.style.active_border_width)
-        self.border_tl_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_tl_border,
-                                                       MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
-        self.border_br_color = ColorGradationAnimation(0.15, self.style.border, self.style.active_br_border,
-                                                       MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
+        self.border_tl_color = ColorGradientAnimation(0.15, self.style.border, self.style.active_tl_border,
+                                                      MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
+        self.border_br_color = ColorGradientAnimation(0.15, self.style.border, self.style.active_br_border,
+                                                      MAKE_ANIM_FRAMES(KeyFrameCurves.SMOOTH))
         self.border_anim = AnimationGroup({
             "width": self.border_width,
             "tl_color": self.border_tl_color,

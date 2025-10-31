@@ -14,9 +14,10 @@ Num = int | float
 
 class Animation:
     """一个动画, """
+
     def __init__(self, during: float):
         self.during = during  # 持续时间
-        self.is_invent = False   # 是否为倒放
+        self.is_invent = False  # 是否为倒放
         self.has_finish = False  # 动画是否结束
 
         self.playing_start = -1  # 动画开始时间
@@ -68,7 +69,7 @@ class Animation:
         return int(self.value)
 
     def raw_get_value(self, percent: float) -> float:
-        raise NotImplementedError()
+        return percent
 
 
 class BlinkAnimation(Animation):
@@ -215,7 +216,7 @@ class EZKeyFrameAnimation(KeyFrameAnimation):
         return super().value * (self.end - self.start) + self.start
 
 
-class ColorGradationAnimation(KeyFrameAnimation):
+class ColorGradientAnimation(KeyFrameAnimation):
     DEFAULT_FRAMES = [
         KeyFrame(KeyFrameCurves.SMOOTH, 0, 0),
         KeyFrame(KeyFrameCurves.SMOOTH, 1, 1)
@@ -232,15 +233,49 @@ class ColorGradationAnimation(KeyFrameAnimation):
         self.color1 = color1
         self.color2 = color2
 
+    @staticmethod
+    def mix_color(color1: wx.Colour, color2: wx.Colour, percent: float):
+        return wx.Colour(
+            int(color1.Red() * (1 - percent) + color2.Red() * percent),
+            int(color1.Green() * (1 - percent) + color2.Green() * percent),
+            int(color1.Blue() * (1 - percent) + color2.Blue() * percent),
+            int(color1.Alpha() * (1 - percent) + color2.Alpha() * percent)
+        )
+
     @property
     def value(self) -> wx.Colour:
         percent = super().value
-        new_rgba = (self.color1.Red() * (1 - percent) + self.color2.Red() * percent,
-                    self.color1.Green() * (1 - percent) + self.color2.Green() * percent,
-                    self.color1.Blue() * (1 - percent) + self.color2.Blue() * percent,
-                    self.color1.Alpha() * (1 - percent) + self.color2.Alpha() * percent)
-        new_rgba = tuple(int(x) for x in new_rgba)
-        return wx.Colour(new_rgba)
+        return self.mix_color(self.color1, self.color2, percent)
+
+
+class MultiColorGradientAnimation(Animation):
+    """多颜色渐变动画"""
+    def __init__(self, during: float, *colors: tuple[str, wx.Colour]):
+        super().__init__(during)
+        self.colors: dict[str, wx.Colour] = dict(colors)
+        self.current_name: str = colors[0][0]
+        self.current_color: wx.Colour = self.colors[self.current_name]
+        self.start_color: wx.Colour = self.current_color
+        self.last_color: wx.Colour = self.current_color
+
+    def set_target(self, name: str, invent: bool = False):
+        """设置目标颜色, 颜色将会从当前颜色渐变至"""
+        self.set_invent(invent)
+        self.start_color = self.last_color
+        self.current_name = name
+        self.current_color = self.colors[name]
+
+    def __getitem__(self, name: str):
+        return self.colors[name]
+
+    def __setitem__(self, key: str, value: wx.Colour):
+        self.colors[key] = value
+
+    @property
+    def value(self) -> wx.Colour:
+        v= super().value
+        self.last_color = ColorGradientAnimation.mix_color(self.start_color, self.current_color, v)
+        return self.last_color
 
 
 class MultiKeyFrameAnimation(Animation):

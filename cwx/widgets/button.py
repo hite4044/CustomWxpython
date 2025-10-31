@@ -9,9 +9,9 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
-from ..event import SimpleCommandEvent
-from ..animation import MultiKeyFrameAnimation, ColorGradationAnimation
+from ..animation import ColorGradientAnimation, MultiColorGradientAnimation
 from ..dpi import SCALE
+from ..event import SimpleCommandEvent
 from ..render import CustomGraphicsContext
 from ..style import Style, BtnStyle, HyperlinkBtnStyle
 
@@ -25,7 +25,7 @@ class ButtonEvent(SimpleCommandEvent):
 
 class ButtonBase(AnimationWidget):
     style: BtnStyle
-    bg_anim: MultiKeyFrameAnimation
+    bg_anim: MultiColorGradientAnimation
 
     def __init__(self, parent: wx.Window, widget_style: BtnStyle = None):
         """按钮基类"""
@@ -39,11 +39,10 @@ class ButtonBase(AnimationWidget):
     def init_animation(self):
         """初始按钮动画的函数"""
 
-        self.bg_anim = MultiKeyFrameAnimation \
-            ({"float": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.float),
-              "click": ColorGradationAnimation(0.1, self.style.bg.float, self.style.bg.pressed),
-              "disable": ColorGradationAnimation(0.1, self.style.bg, self.style.bg.disabled)
-              })
+        self.bg_anim = MultiColorGradientAnimation(0.1, ("normal", self.style.bg),
+                                                   ("float", self.style.bg.float),
+                                                   ("pressed", self.style.bg.pressed),
+                                                   ("disable", self.style.bg.disabled))
 
         self.reg_animation("bg", self.bg_anim)
 
@@ -60,26 +59,21 @@ class ButtonBase(AnimationWidget):
         if event.Entering():
             if event.LeftIsDown():
                 self.mask_state = MaskState.DOWN
-                self.bg_anim.set_sub_anim("click")
-                self.bg_anim.set_invent(invent=False)
+                self.bg_anim.set_target("pressed", False)
             else:
                 self.mask_state = MaskState.BELOW
-                self.bg_anim.set_sub_anim("float")
-                self.bg_anim.set_invent(invent=False)
+                self.bg_anim.set_target("float", False)
         elif event.Leaving():
             self.mask_state = MaskState.NONE
-            self.bg_anim.set_sub_anim("float")
-            self.bg_anim.set_invent(invent=True)
+            self.bg_anim.set_target("normal", True)
         elif event.LeftDown():
             self.mask_state = MaskState.DOWN
-            self.bg_anim.set_sub_anim("click")
-            self.bg_anim.set_invent(invent=False)
+            self.bg_anim.set_target("pressed", False)
             self.on_button()
             self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
             self.mask_state = MaskState.BELOW
-            self.bg_anim.set_sub_anim("click")
-            self.bg_anim.set_invent(invent=True)
+            self.bg_anim.set_target("normal", True)
         else:
             return
         self.play_animation("bg")
@@ -91,8 +85,7 @@ class ButtonBase(AnimationWidget):
 
     def Enable(self, enable: bool = True):
         super().Enable(enable)
-        self.bg_anim.set_sub_anim("disable")
-        self.bg_anim.set_invent(invent=enable)
+        self.bg_anim.set_target("disable", enable)
         self.play_animation("bg")
         self.Refresh()
 
@@ -109,8 +102,10 @@ class ButtonBase(AnimationWidget):
     def load_widget_style(self, style: BtnStyle):
         super().load_widget_style(style)
         if not self.initializing_style:
-            typing.cast(ColorGradationAnimation, self.bg_anim["float"]).set_color(style.bg.normal, style.bg.float)
-            typing.cast(ColorGradationAnimation, self.bg_anim["disable"]).set_color(style.bg.normal, style.bg.disabled)
+            self.bg_anim['normal'] = style.bg.normal
+            self.bg_anim['float'] = style.bg.float
+            self.bg_anim['pressed'] = style.bg.pressed
+            self.bg_anim['disable'] = style.bg.disabled
 
     def draw_content(self, gc: CustomGraphicsContext):
         self.draw_btn_background(gc)  # 绘制背景
@@ -135,6 +130,7 @@ class ButtonBase(AnimationWidget):
 
 class Button(ButtonBase):
     """一个普通按钮"""
+
     def __init__(self, parent: wx.Window, label: str, widget_style: BtnStyle = None):
         """
         Args:
@@ -170,6 +166,7 @@ class Button(ButtonBase):
 
 class HyperlinkButton(Button):
     """点击可以跳转至特定网址的按钮"""
+
     def __init__(self, parent: wx.Window, label: str, url: str = None, widget_style: HyperlinkBtnStyle = None):
         """
         Args:
