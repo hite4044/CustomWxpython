@@ -193,6 +193,8 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
     TRANSPARENT_PEN = _FACTORY_GC.CreatePen(wx.GraphicsPenInfo(wx.BLACK, 0, wx.PENSTYLE_TRANSPARENT))
     font_trace_map: dict[int, wx.Font] = {}
 
+    force_transparent_text = False
+
     def __new__(cls, *args, **kwargs):
         if cls.TRANSPARENT_BRUSH is None:
             cls.TRANSPARENT_BRUSH = cls._FACTORY_GC.CreateBrush(wx.Brush(wx.BLACK, wx.BRUSHSTYLE_TRANSPARENT))
@@ -205,6 +207,11 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.gc = gc
         self.current_font: wx.Font | None = None
         self.window = gc.GetWindow()
+        self.is_dark = getattr(self.window, "gen_style").is_dark if hasattr(self.window, "gen_style") else False
+
+        if self.force_transparent_text:
+            self.enable_transparent_text = True
+            return
         top_level = gc.GetWindow().GetTopLevelParent()
         if hasattr(top_level, "WindowBlurEnabled") and getattr(top_level, "WindowBlurEnabled"):
             self.enable_transparent_text = True
@@ -243,7 +250,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             offset_pos = (int(x), int(y))
         else:  # 新增字体渲染缓存
             wx_font = self.current_font if self.current_font else self.window.GetFont()
-            bitmap, size = GCRender.RenderTransparentText(self, info, wx_font)  # 增加渲染颜色
+            bitmap, size = GCRender.RenderTransparentText(self, info, wx_font, self.is_dark)  # 增加渲染颜色
             info.size = size
             info.text_bitmap = bitmap
             TheTextCacheManager.add_cache(info)
@@ -338,7 +345,7 @@ class GCRender:
         return font
 
     @staticmethod
-    def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font) -> \
+    def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font, text_enchant: bool = True, enchant_factor: float = 0.25) -> \
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
         """渲染一个透明度文字"""
         window = gc.GetWindow()
@@ -364,9 +371,10 @@ class GCRender:
                   info.text, fill=color, font=font, spacing=SPACING)
 
         # 增强文字遮罩
-        alpha = image.getchannel("A")  # 获取文字遮罩
-        alpha = ImageEnhance.Brightness(alpha).enhance(1.25)  # 增加亮度
-        image.putalpha(alpha)  # 应用增强后的透明度
+        if text_enchant:
+            alpha = image.getchannel("A")  # 获取文字遮罩
+            alpha = ImageEnhance.Brightness(alpha).enhance(1 + enchant_factor)  # 增加亮度
+            image.putalpha(alpha)  # 应用增强后的透明度
 
         # 转化并返回
         wx_image = PilImg2WxImg(image)

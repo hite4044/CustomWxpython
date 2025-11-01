@@ -81,9 +81,9 @@ class CheckBox(AnimationWidget):
             last_state = self.mask_state
             if in_box:
                 if event.LeftIsDown():
-                    self.mask_state = MaskState.DOWN
+                    self.mask_state = MaskState.PRESSED
                 else:
-                    self.mask_state = MaskState.BELOW
+                    self.mask_state = MaskState.HOVER
             else:
                 self.mask_state = MaskState.NONE
             if self.mask_state != last_state:
@@ -119,9 +119,9 @@ class CheckBox(AnimationWidget):
             if self.current_state in [wx.CHK_CHECKED, wx.CHK_UNDETERMINED]:  # 绘制选中或者半选中
                 # 绘制背景
                 self.style.box_active_bg.reset()
-                if self.mask_state == MaskState.DOWN:
+                if self.mask_state == MaskState.PRESSED:
                     self.style.box_active_bg.dark2() if self.gen_style.is_dark else self.style.box_active_bg.light2()
-                elif self.mask_state == MaskState.BELOW:
+                elif self.mask_state == MaskState.HOVER:
                     self.style.box_active_bg.dark1() if self.gen_style.is_dark else self.style.box_active_bg.light1()
                 gc.SetBrush(self.style.box_active_bg.create_brush(gc, box_size))
                 gc.DrawRoundedRectangle(0, 0, *box_size, radius)
@@ -139,7 +139,7 @@ class CheckBox(AnimationWidget):
                 gc.DrawAnimationElement(self.check_sym_am)
 
             elif self.current_state == wx.CHK_UNCHECKED:  # 绘制未选中
-                if self.mask_state == MaskState.BELOW:
+                if self.mask_state == MaskState.HOVER:
                     gc.SetBrush(self.style.box_hover_bg.create_brush(gc, box_size))
                 else:
                     gc.SetBrush(gc.TRANSPARENT_BRUSH)

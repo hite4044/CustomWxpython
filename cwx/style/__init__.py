@@ -21,6 +21,7 @@ class Style:
         self.load()
 
     def load(self):
+        """初始化各种组件主题"""
         self.default_style = EmptyStyle.load(self)
         self.frame_style = TopLevelStyle.load(self)
         self.btn_style = BtnStyle.load(self)
@@ -30,11 +31,12 @@ class Style:
 
     @staticmethod
     def sys_is_dark():
+        """获取系统当前是否为暗色模式"""
         return wx.SystemSettings.GetAppearance().IsDark()
 
     def set_as_light(self):
-        self.colors.bg = wx.Colour(240, 240, 240)
-        self.colors.fg = wx.BLACK
+        """设置主题为亮色模式, 将会以变更过后的颜色重新加载组件主题"""
+        self.colors = Colors.default(False)
         self.is_dark = False
 
         self.load()
@@ -42,13 +44,18 @@ class Style:
         return self
 
     def set_as_dark(self):
-        self.colors.bg = wx.BLACK
-        self.colors.fg = wx.WHITE
+        """设置主题为暗色模式, 将会以变更过后的颜色重新加载组件主题"""
+        self.colors = Colors.default(True)
         self.is_dark = True
 
         self.load()
         self.frame_style.caption_theme = FrameTheme.DARK
         return self
+
+    def copy(self):
+        """创建主题的副本"""
+        from copy import deepcopy
+        return deepcopy(self)
 
 
 class DefaultStyleCls:
@@ -72,23 +79,29 @@ class DefaultStyleCls:
 DefaultStyle = DefaultStyleCls()
 
 
-@dataclass
-class Foreground(wx.Colour):
-    float: wx.Colour
+class MaskState(Enum):
+    NONE = 0  # 无
+    HOVER = 1  # 鼠标悬浮在控件上面
+    PRESSED = 2  # 鼠标按下
+    DISABLED = 3  # 禁用
+
+
+class MixedStateColor(wx.Colour):
+    hover: wx.Colour
     pressed: wx.Colour
     disabled: wx.Colour
 
     def __init__(self, normal: wx.Colour,
-                 float: wx.Colour = None, pressed: wx.Colour = None, disabled: wx.Colour = None):
-        if float is None:
-            float = normal
+                 hover: wx.Colour = None, pressed: wx.Colour = None, disabled: wx.Colour = None):
+        if hover is None:
+            hover = normal
         if pressed is None:
             pressed = normal
         if disabled is None:
             disabled = normal
 
         super().__init__(normal)
-        self.float = float
+        self.hover = hover
         self.pressed = pressed
         self.disabled = disabled
 
@@ -101,41 +114,24 @@ class Foreground(wx.Colour):
         self.SetRGBA(value.GetRGBA())
 
     @classmethod
-    def from_colors(cls, text: Colors.TextColors):
-        return cls(text.primary, text.secondary, text.primary, text.secondary)
+    def from_colors(cls, state_color: Colors.StateColor):
+        return cls(state_color.st_default, state_color.st_hover, state_color.st_pressed, state_color.st_disabled)
 
 
-@dataclass
-class Background(wx.Colour):
-    float: wx.Colour
-    pressed: wx.Colour
-    disabled: wx.Colour
+class Foreground(MixedStateColor):
+    pass
 
-    def __init__(self, normal: wx.Colour,
-                 float: wx.Colour = None, pressed: wx.Colour = None, disabled: wx.Colour = None):
-        if float is None:
-            float = normal
-        if pressed is None:
-            pressed = normal
-        if disabled is None:
-            disabled = normal
 
-        super().__init__(normal)
-        self.float = float
-        self.pressed = pressed
-        self.disabled = disabled
+class Background(MixedStateColor):
+    pass
 
-    @property
-    def normal(self):
-        return self
 
-    @normal.setter
-    def normal(self, value: wx.Colour):
-        self.SetRGBA(value.GetRGBA())
+class Stroke(MixedStateColor):
+    pass
 
-    @classmethod
-    def from_colors(cls, background: Colors.BackColors):
-        return cls(background.default, background.secondary, background.tertiary, background.disabled)
+
+class Border(MixedStateColor):
+    pass
 
 
 class WidgetStyle:
@@ -163,7 +159,7 @@ class WidgetStyle:
         """
         return WidgetStyle(
             Foreground.from_colors(style.colors.text),
-            Background.from_colors(style.colors.back),
+            Background.from_colors(style.colors.control_fill),
         )
 
 
@@ -192,7 +188,7 @@ class TopLevelStyle(WidgetStyle):
     @classmethod
     def load(cls, style: Style) -> 'TopLevelStyle':
         return cls(
-            bg=Background(TRANSPARENT_COLOR),
+            bg=Background((wx.BLACK if style.is_dark else wx.WHITE)),
             caption_theme=GlobalSettings.default_caption_theme,
             backdrop_type=GlobalSettings.default_backdrop_type,
             accent_type=GlobalSettings.default_frame_accent,
@@ -221,25 +217,26 @@ class BorderStyle:
 class BtnStyle(WidgetStyle):
     fg: Foreground
     bg: Background
+    border: Border
 
     def __init__(self,
                  fg: Foreground,
                  bg: Background,
-                 border_color: wx.Colour,
+                 border: Border,
                  corner_radius: float,
                  border_width: float,
                  border_style: int,
                  ):
         """
-        :param fg: 按钮文字颜色
+        :param fg: 按钮文字
         :param bg: 按钮背景
-        :param border_color: 边框颜色
+        :param border: 按钮边框
         :param corner_radius: 边框圆角半径
         :param border_width: 边框宽度
         :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
         """
         super().__init__(fg, bg)
-        self.border_color = border_color
+        self.border = border
         self.corner_radius = corner_radius
         self.border_width = border_width
         self.border_style = border_style
@@ -249,8 +246,8 @@ class BtnStyle(WidgetStyle):
         colors = style.colors
         return cls(
             fg=Foreground.from_colors(colors.text),
-            bg=Background.from_colors(colors.back),
-            border_color=TC(colors.back.default).with_alpha(30),
+            bg=Background.from_colors(colors.control_fill),
+            border=Border.from_colors(colors.control_stroke),
             corner_radius=6,
             border_width=1,
             border_style=wx.PENSTYLE_SOLID
@@ -262,11 +259,14 @@ class HyperlinkBtnStyle(BtnStyle):
     def load(cls, style: Style) -> 'BtnStyle':
         widget_style = super().load(style)
         widget_style.bg.normal = TRANSPARENT_COLOR
+        if not style.is_dark:
+            widget_style.bg.hover = wx.Colour(0, 0, 0, 10)
+            widget_style.bg.pressed = wx.Colour(0, 0, 0, 6)
         widget_style.bg.disabled = TRANSPARENT_COLOR
-        widget_style.border_color = TRANSPARENT_COLOR
+        widget_style.border = Border(TRANSPARENT_COLOR)
 
         widget_style.fg.normal = style.colors.accent_text.primary
-        widget_style.fg.float = style.colors.accent_text.secondary
+        widget_style.fg.hover = style.colors.accent_text.secondary
         widget_style.fg.pressed = style.colors.accent_text.tertiary
         widget_style.fg.disabled = style.colors.text.disabled
 

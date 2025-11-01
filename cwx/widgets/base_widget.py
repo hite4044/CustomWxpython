@@ -1,6 +1,5 @@
 import typing
 from dataclasses import dataclass
-from enum import Enum
 
 import wx
 from win32.lib.win32con import GWL_STYLE, WS_CLIPSIBLINGS
@@ -10,7 +9,9 @@ from ..dpi import translate_size, SCALE
 from ..event import PyCommandEvent
 from ..lib.perf import Counter
 from ..render import CustomGraphicsContext
-from ..style import Style, WidgetStyle
+from ..style import Style, WidgetStyle, MaskState
+
+__KEEP_IMPORT = MaskState
 
 cwxEVT_STYLE_UPDATE = wx.NewEventType()
 EVT_STYLE_UPDATE = wx.PyEventBinder(cwxEVT_STYLE_UPDATE, 1)
@@ -27,12 +28,6 @@ class StyleUpdateEvent(PyCommandEvent):
 1. 重写translate_style方法, 负责将 主题(Style) 转换为 组件主题(WidgetStyle)
 2. 继承load_widget_style方法, 加载 组件主题(WidgetStyle)
 """
-
-
-class MaskState(Enum):
-    NONE = 0  # 无
-    BELOW = 1  # 鼠标悬浮在控件上面
-    DOWN = 2  # 鼠标按下
 
 
 class Widget(wx.Window):

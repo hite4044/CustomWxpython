@@ -1,7 +1,6 @@
 """
 按钮
 """
-import typing
 import webbrowser
 from typing import cast as type_cast
 
@@ -9,9 +8,10 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
-from ..animation import ColorGradientAnimation, MultiColorGradientAnimation
+from ..animation import MultiColorGradientAnimation
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
+from ..lib.adv_anim import StateGradientAnimation
 from ..render import CustomGraphicsContext
 from ..style import Style, BtnStyle, HyperlinkBtnStyle
 
@@ -23,15 +23,18 @@ class ButtonEvent(SimpleCommandEvent):
     eventType: int = cwxEVT_BUTTON
 
 
+# class AutoBaseColorWrapper
 class ButtonBase(AnimationWidget):
     style: BtnStyle
-    bg_anim: MultiColorGradientAnimation
+    bg_anim: StateGradientAnimation
+    border_anim: StateGradientAnimation
 
     def __init__(self, parent: wx.Window, widget_style: BtnStyle = None):
         """按钮基类"""
         super().__init__(parent, widget_style=widget_style, fps=60)
         self.mask_state = MaskState.NONE
         self.crt_bg = wx.Colour(self.style.bg)
+        self.crt_border = wx.Colour(self.style.border)
         self.init_animation()
 
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_events)
@@ -39,18 +42,16 @@ class ButtonBase(AnimationWidget):
     def init_animation(self):
         """初始按钮动画的函数"""
 
-        self.bg_anim = MultiColorGradientAnimation(0.1, ("normal", self.style.bg),
-                                                   ("float", self.style.bg.float),
-                                                   ("pressed", self.style.bg.pressed),
-                                                   ("disable", self.style.bg.disabled))
-
+        self.bg_anim = StateGradientAnimation(0.1, self.style.bg)
+        self.border_anim = StateGradientAnimation(0.1, self.style.border)
         self.reg_animation("bg", self.bg_anim)
+        self.reg_animation("border", self.border_anim)
 
     def animation_callback(self):
         if self.bg_anim.is_playing:
             self.crt_bg = self.bg_anim.value
-        else:
-            return
+        if self.border_anim.is_playing:
+            self.crt_border = self.border_anim.value
 
         self.Refresh()
 
@@ -58,22 +59,22 @@ class ButtonBase(AnimationWidget):
         event.Skip()
         if event.Entering():
             if event.LeftIsDown():
-                self.mask_state = MaskState.DOWN
-                self.bg_anim.set_target("pressed", False)
+                self.mask_state = MaskState.PRESSED
+                self.bg_anim.set_target(self.mask_state, False)
             else:
-                self.mask_state = MaskState.BELOW
-                self.bg_anim.set_target("float", False)
+                self.mask_state = MaskState.HOVER
+                self.bg_anim.set_target(self.mask_state, False)
         elif event.Leaving():
             self.mask_state = MaskState.NONE
-            self.bg_anim.set_target("normal", True)
+            self.bg_anim.set_target(self.mask_state, True)
         elif event.LeftDown():
-            self.mask_state = MaskState.DOWN
-            self.bg_anim.set_target("pressed", False)
+            self.mask_state = MaskState.PRESSED
+            self.bg_anim.set_target(self.mask_state, False)
             self.on_button()
             self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
-            self.mask_state = MaskState.BELOW
-            self.bg_anim.set_target("normal", True)
+            self.mask_state = MaskState.HOVER
+            self.bg_anim.set_target(self.mask_state, True)
         else:
             return
         self.play_animation("bg")
@@ -85,7 +86,7 @@ class ButtonBase(AnimationWidget):
 
     def Enable(self, enable: bool = True):
         super().Enable(enable)
-        self.bg_anim.set_target("disable", enable)
+        self.bg_anim.set_target(MaskState.DISABLED, enable)
         self.play_animation("bg")
         self.Refresh()
 
@@ -103,7 +104,7 @@ class ButtonBase(AnimationWidget):
         super().load_widget_style(style)
         if not self.initializing_style:
             self.bg_anim['normal'] = style.bg.normal
-            self.bg_anim['float'] = style.bg.float
+            self.bg_anim['float'] = style.bg.hover
             self.bg_anim['pressed'] = style.bg.pressed
             self.bg_anim['disable'] = style.bg.disabled
 
@@ -115,10 +116,11 @@ class ButtonBase(AnimationWidget):
         w, h = self.GetTupClientSize()
 
         border_width = self.style.border_width * SCALE
-        gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.style.border_color, border_width, self.style.border_style)))
+        gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border, border_width, self.style.border_style)))
         gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
-        gc.DrawInnerRoundedRect(border_width / 2, border_width / 2,
-                                w - border_width, h - border_width,
+        print(self.crt_bg)
+        gc.DrawInnerRoundedRect(0, 0,
+                                w, h,
                                 self.style.corner_radius * SCALE, border_width)
 
     def draw_btn_content(self, gc: CustomGraphicsContext):
@@ -155,8 +157,8 @@ class Button(ButtonBase):
             text_color = self.style.fg.disabled
         else:
             text_color = {MaskState.NONE: self.style.fg.normal,
-                          MaskState.BELOW: self.style.fg.normal,
-                          MaskState.DOWN: self.style.fg.pressed}[self.mask_state]
+                          MaskState.HOVER: self.style.fg.normal,
+                          MaskState.PRESSED: self.style.fg.pressed}[self.mask_state]
 
         gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
         label = self.GetLabel()

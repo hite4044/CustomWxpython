@@ -81,6 +81,7 @@ class TopLevelWrapper(Widget):
         self.WindowBlurEnabled = enable_comp or enable_backdrop
 
         super().SetForegroundColour(style.fg)
+        super().SetBackgroundColour(style.bg)
 
     def draw_content(self, gc: CustomGraphicsContext):
         if not self.style.is_default_bg:

@@ -183,8 +183,38 @@ TheDefaultColors: DefaultColors = DelayInitWrapper(DefaultColors)
 
 
 class Colors:
+    """根据WinUI 3的颜色系统设置, WinUI 3的颜色系统真的非常好！"""
+
+    class StateColor:
+        KEY_MAP: dict[str, str] = {}
+        use_default: bool = True
+
+        @property
+        def st_default(self) -> wx.Colour:
+            return self.get_color("default")
+
+        @property
+        def st_hover(self) -> wx.Colour | None:
+            return self.get_color("hover")
+
+        @property
+        def st_pressed(self) -> wx.Colour | None:
+            return self.get_color("pressed")
+
+        @property
+        def st_disabled(self) -> wx.Colour | None:
+            return self.get_color("disabled")
+
+        def get_color(self, state: str) -> wx.Colour | None:
+            if n := self.KEY_MAP.get(state):
+                return getattr(self, n)
+            if self.use_default and "default" in self.KEY_MAP:
+                return getattr(self, self.KEY_MAP["default"])
+            return None
+
     @dataclass
-    class TextColors:
+    class Text(StateColor):
+        KEY_MAP = {"default": "primary", "hover": "secondary", "pressed": "tertiary", "disabled": "disabled"}
         primary: wx.Colour
         secondary: wx.Colour
         tertiary: wx.Colour
@@ -200,7 +230,8 @@ class Colors:
             )
 
     @dataclass
-    class BackColors:
+    class ControlFill(StateColor):
+        KEY_MAP = {"default": "default", "hover": "secondary", "pressed": "tertiary", "disabled": "disabled"}
         default: wx.Colour
         secondary: wx.Colour
         tertiary: wx.Colour
@@ -208,15 +239,45 @@ class Colors:
 
         @classmethod
         def load(cls, for_dark: bool):
-            return cls(
-                default=CT.with_alpha(wx.WHITE, 20) if for_dark else wx.Colour(26, 26, 26),  # Rest
-                secondary=CT.with_alpha(wx.WHITE, 30) if for_dark else wx.Colour(26, 26, 26),  # Hover
-                tertiary=CT.with_alpha(wx.WHITE, 10) if for_dark else wx.Colour(26, 26, 26),  # Pressed
-                disabled=CT.with_alpha(wx.WHITE, 15) if for_dark else wx.Colour(26, 26, 26),  # Disabled
-            )
+            if for_dark:  # 暗色
+                std = wx.WHITE
+                return cls(
+                    default=CT.with_alpha(std, 16),  # Rest
+                    secondary=CT.with_alpha(std, 24),  # Hover
+                    tertiary=CT.with_alpha(std, 10),  # Pressed
+                    disabled=CT.with_alpha(std, 15)  # Disabled
+                )
+            else:  # 亮色
+                std = wx.BLACK
+                return cls(
+                    default=wx.Colour(255, 255, 255, 0xB3),
+                    secondary=wx.Colour(249, 249, 249, 0x50),
+                    tertiary=wx.Colour(249, 249, 249, 0x4D),  # Pressed
+                    disabled=CT.with_alpha(std, 15)
+                )
 
     @dataclass
-    class AccentText:
+    class ControlStroke(StateColor):
+        KEY_MAP = {"default": "default", "hover": "secondary"}
+        default: wx.Colour
+        secondary: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            if for_dark:
+                return cls(
+                    default=wx.Colour(255, 255, 255, 16),
+                    secondary=wx.Colour(255, 255, 255, 0x29),
+                )
+            else:
+                return cls(
+                    default=wx.Colour(0, 0, 0, 0x0F),
+                    secondary=wx.Colour(0, 0, 0, 0x29),
+                )
+
+    @dataclass
+    class AccentText(StateColor):
+        KEY_MAP = {"default": "primary", "hover": "secondary", "pressed": "tertiary", "disabled": "disabled"}
         primary: wx.Colour
         secondary: wx.Colour
         tertiary: wx.Colour
@@ -232,9 +293,10 @@ class Colors:
             )
 
     def __init__(self,
-                 text: TextColors,
+                 text: Text,
                  accent_text: AccentText,
-                 back: BackColors,
+                 control_fill: ControlFill,
+                 control_stroke: ControlStroke,
                  primary: wx.Colour,
                  secondary: wx.Colour,
                  fg: wx.Colour,
@@ -242,7 +304,8 @@ class Colors:
                  border: wx.Colour):
         self.text = text
         self.accent_text = accent_text
-        self.back = back
+        self.control_fill = control_fill
+        self.control_stroke = control_stroke
 
         self.primary = primary
         self.secondary = secondary
@@ -261,14 +324,15 @@ class Colors:
     @staticmethod
     def default(for_dark: bool):
         return Colors(
-            text=Colors.TextColors.load(for_dark),
+            text=Colors.Text.load(for_dark),
             accent_text=Colors.AccentText.load(for_dark),
-            back=Colors.BackColors.load(for_dark),
+            control_fill=Colors.ControlFill.load(for_dark),
+            control_stroke=Colors.ControlStroke.load(for_dark),
             primary=TheDefaultColors.PRIMARY,
             secondary=wx.Colour(85, 85, 85, 128),
             fg=wx.Colour(255, 255, 255),
             bg=wx.BLACK,
-            border=wx.Colour(85, 85, 85)
+            border=wx.Colour(0, 0, 0, 15)
         )
 
 
