@@ -10,7 +10,6 @@ class StateGradientAnimation(MultiColorGradientAnimation):
                          ("disable", state_color.disabled))
 
     def set_target(self, state: MaskState, invent: bool = False):
-        print(state)
         if state == MaskState.NONE:
             name = "normal"
         else:
