@@ -8,7 +8,6 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
-from ..animation import MultiColorGradientAnimation
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
 from ..lib.adv_anim import StateGradientAnimation
@@ -118,7 +117,6 @@ class ButtonBase(AnimationWidget):
         border_width = self.style.border_width * SCALE
         gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border, border_width, self.style.border_style)))
         gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
-        print(self.crt_bg)
         gc.DrawInnerRoundedRect(0, 0,
                                 w, h,
                                 self.style.corner_radius * SCALE, border_width)

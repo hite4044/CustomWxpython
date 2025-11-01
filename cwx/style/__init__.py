@@ -188,7 +188,7 @@ class TopLevelStyle(WidgetStyle):
     @classmethod
     def load(cls, style: Style) -> 'TopLevelStyle':
         return cls(
-            bg=Background((wx.BLACK if style.is_dark else wx.WHITE)),
+            bg=Background((wx.Colour(32, 32, 32) if style.is_dark else wx.Colour(243, 243, 243))),
             caption_theme=GlobalSettings.default_caption_theme,
             backdrop_type=GlobalSettings.default_backdrop_type,
             accent_type=GlobalSettings.default_frame_accent,

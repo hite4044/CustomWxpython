@@ -216,11 +216,29 @@ class EZKeyFrameAnimation(KeyFrameAnimation):
         return super().value * (self.end - self.start) + self.start
 
 
+import colorsys
+
+
 class ColorGradientAnimation(KeyFrameAnimation):
     DEFAULT_FRAMES = [
         KeyFrame(KeyFrameCurves.SMOOTH, 0, 0),
         KeyFrame(KeyFrameCurves.SMOOTH, 1, 1)
     ]
+
+    @staticmethod
+    def rgb_to_hsl(color: wx.Colour):
+        # 归一化到[0,1]
+        r_norm, g_norm, b_norm = color.GetRed() / 255.0, color.GetGreen() / 255.0, color.GetBlue() / 255.0
+        # colorsys使用0-1范围的H，需要转换为0-360
+        h, l, s = colorsys.rgb_to_hls(r_norm, g_norm, b_norm)
+        return h, s, l  # 转换为标准的HSL表示
+
+    @staticmethod
+    def hsl_to_rgb(h, s, l):
+        """使用color sys将浮点HSL转换为整数RGB"""
+        # 将H从0-360转换为0-1
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        return int(round(r * 255)), int(round(g * 255)), int(round(b * 255))
 
     def __init__(self, during: float, color1: wx.Colour, color2: wx.Colour, key_frames=None):
         if key_frames is None:
@@ -235,12 +253,15 @@ class ColorGradientAnimation(KeyFrameAnimation):
 
     @staticmethod
     def mix_color(color1: wx.Colour, color2: wx.Colour, percent: float):
-        return wx.Colour(
-            int(color1.Red() * (1 - percent) + color2.Red() * percent),
-            int(color1.Green() * (1 - percent) + color2.Green() * percent),
-            int(color1.Blue() * (1 - percent) + color2.Blue() * percent),
-            int(color1.Alpha() * (1 - percent) + color2.Alpha() * percent)
+        hsl1 = ColorGradientAnimation.rgb_to_hsl(color1)
+        hsl2 = ColorGradientAnimation.rgb_to_hsl(color2)
+        new_hsl = (
+            hsl1[0] * (1 - percent) + hsl2[0] * percent,
+            hsl1[1] * (1 - percent) + hsl2[1] * percent,
+            hsl1[2] * (1 - percent) + hsl2[2] * percent
         )
+        new_rgb = ColorGradientAnimation.hsl_to_rgb(*new_hsl)
+        return wx.Colour(*new_rgb, int(color1.Alpha() * (1 - percent) + color2.Alpha() * percent))
 
     @property
     def value(self) -> wx.Colour:
@@ -249,7 +270,8 @@ class ColorGradientAnimation(KeyFrameAnimation):
 
 
 class MultiColorGradientAnimation(Animation):
-    """多颜色渐变动画"""
+    """多颜色渐变动画, 通过set_target设置目标颜色, 这个类会自动处理渐变关系"""
+
     def __init__(self, during: float, *colors: tuple[str, wx.Colour]):
         super().__init__(during)
         self.colors: dict[str, wx.Colour] = dict(colors)
@@ -273,8 +295,8 @@ class MultiColorGradientAnimation(Animation):
 
     @property
     def value(self) -> wx.Colour:
-        v= super().value
-        self.last_color = ColorGradientAnimation.mix_color(self.start_color, self.current_color, v)
+        percent = super().value
+        self.last_color = ColorGradientAnimation.mix_color(self.start_color, self.current_color, percent)
         return self.last_color
 
 
