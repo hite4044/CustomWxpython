@@ -134,6 +134,13 @@ class ColorTransformer:
         return wx.Colour(int(color_tup[0] * 255), int(color_tup[1] * 255), int(color_tup[2] * 255), wx_color.GetAlpha())
 
     @staticmethod
+    def set_lum(wx_color: wx.Colour, luminance: float):
+        color = colour.Color(rgb=(wx_color.GetRed() / 255, wx_color.GetGreen() / 255, wx_color.GetBlue() / 255))
+        color.set_luminance(luminance)
+        color_tup: tuple[int, int, int] = color.get_rgb()
+        return wx.Colour(int(color_tup[0] * 255), int(color_tup[1] * 255), int(color_tup[2] * 255), wx_color.GetAlpha())
+
+    @staticmethod
     def highlight(color: wx.Colour):
         return ColorTransformer.add_luminance(color, LUM_LEVEL)
 
@@ -276,6 +283,20 @@ class Colors:
                 )
 
     @dataclass
+    class ControlStrongStroke(StateColor):
+        KEY_MAP = {"default": "default", "disabled": "disabled"}
+        default: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            alpha = 230  # 一些透明度是必要的，即使是纯色颜色
+            return cls(
+                default=wx.Colour(154, 154, 154, alpha) if for_dark else wx.Colour(67, 67, 67, alpha),
+                disabled=wx.Colour(134, 134, 134, alpha) if for_dark else wx.Colour(191, 191, 191, alpha)
+            )
+
+    @dataclass
     class AccentText(StateColor):
         KEY_MAP = {"default": "primary", "hover": "secondary", "pressed": "tertiary", "disabled": "disabled"}
         primary: wx.Colour
@@ -292,11 +313,45 @@ class Colors:
                 disabled=wx.Colour(113, 113, 113) if for_dark else wx.Colour(155, 155, 155),
             )
 
+    @dataclass
+    class AccentFill(StateColor):
+        KEY_MAP = {"default": "default", "hover": "secondary", "pressed": "tertiary", "disabled": "disabled"}
+        default: wx.Colour
+        secondary: wx.Colour
+        tertiary: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                default=CT.set_lum(TheDefaultColors.PRIMARY, 0.65),
+                secondary=CT.set_lum(TheDefaultColors.PRIMARY, 0.5),
+                tertiary=CT.set_lum(TheDefaultColors.PRIMARY, 0.35),
+                disabled=wx.Colour(0, 0, 0, 0x37)
+            )
+
+    @dataclass
+    class ControlStrong(StateColor):
+        KEY_MAP = {"default": "default", "disabled": "disabled"}
+        default: wx.Colour
+        disabled: wx.Colour
+        @classmethod
+        def load(cls, for_dark: bool):
+            alpha = 230
+            return cls(
+                default=wx.Colour(209, 209, 209, alpha) if for_dark else wx.Colour(95, 95, 59, alpha),
+                disabled=wx.Colour(121, 121, 121, alpha) if for_dark else wx.Colour(163, 163, 163, alpha)
+            )
+
+
     def __init__(self,
                  text: Text,
                  accent_text: AccentText,
                  control_fill: ControlFill,
+                 control_strong: ControlStrong,
+                 accent_fill: AccentFill,
                  control_stroke: ControlStroke,
+                 control_strong_stroke: ControlStrongStroke,
                  primary: wx.Colour,
                  secondary: wx.Colour,
                  fg: wx.Colour,
@@ -305,7 +360,10 @@ class Colors:
         self.text = text
         self.accent_text = accent_text
         self.control_fill = control_fill
+        self.control_strong = control_strong
+        self.accent_fill = accent_fill
         self.control_stroke = control_stroke
+        self.control_strong_stroke = control_strong_stroke
 
         self.primary = primary
         self.secondary = secondary
@@ -327,7 +385,10 @@ class Colors:
             text=Colors.Text.load(for_dark),
             accent_text=Colors.AccentText.load(for_dark),
             control_fill=Colors.ControlFill.load(for_dark),
+            control_strong=Colors.ControlStrong.load(for_dark),
+            accent_fill=Colors.AccentFill.load(for_dark),
             control_stroke=Colors.ControlStroke.load(for_dark),
+            control_strong_stroke=Colors.ControlStrongStroke.load(for_dark),
             primary=TheDefaultColors.PRIMARY,
             secondary=wx.Colour(85, 85, 85, 128),
             fg=wx.Colour(255, 255, 255),
@@ -405,8 +466,6 @@ class GradientColor(TransformableColor):
 
 
 class GradientPen(GradientColor):
-    ANGLE_CALC_RADIUS = 100
-
     def __init__(self,
                  color: tuple[int, int, int] | wx.Colour,
                  stop_color: tuple[int, int, int] | wx.Colour = None,
@@ -495,6 +554,22 @@ class GradientPen(GradientColor):
                 raise NotImplementedError(f"Not Implemented direction {self.direction} for radial gradient")
             pen = pen.RadialGradient(*gradient_center, *stop_pt, self.radius, self.gradient_stops)
         return gc.CreatePen(pen)
+
+
+class StatedGradientPen(GradientPen):
+    def __init__(self, *pens: tuple[str | Enum, GradientPen]):
+        super().__init__(wx.BLACK)
+        self.pens: dict[str | Enum, GradientPen] = dict(pens)
+        self.crt_name: str | Enum = pens[0][0]
+
+    def set_pen(self, name: str | Enum):
+        if name in self.pens:
+            self.crt_name = name
+        else:
+            raise ValueError(f"Not found pen {name}")
+
+    def create_pen(self, gc: wx.GraphicsContext, size: tuple[float, float], dpi_active: bool = True):
+        return self.pens[self.crt_name].create_pen(gc, size, dpi_active)
 
 
 class GradientBrush(GradientColor):

@@ -59,21 +59,21 @@ class ButtonBase(AnimationWidget):
         if event.Entering():
             if event.LeftIsDown():
                 self.mask_state = MaskState.PRESSED
-                self.bg_anim.set_target(self.mask_state, False)
+                self.bg_anim.set_target(self.mask_state)
             else:
                 self.mask_state = MaskState.HOVER
-                self.bg_anim.set_target(self.mask_state, False)
+                self.bg_anim.set_target(self.mask_state)
         elif event.Leaving():
             self.mask_state = MaskState.NONE
-            self.bg_anim.set_target(self.mask_state, True)
+            self.bg_anim.set_target(self.mask_state)
         elif event.LeftDown():
             self.mask_state = MaskState.PRESSED
-            self.bg_anim.set_target(self.mask_state, False)
+            self.bg_anim.set_target(self.mask_state)
             self.on_button()
             self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
             self.mask_state = MaskState.HOVER
-            self.bg_anim.set_target(self.mask_state, True)
+            self.bg_anim.set_target(self.mask_state)
         else:
             return
         self.play_animation("bg")

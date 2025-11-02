@@ -10,3 +10,4 @@ from .single_line_text_ctrl import *
 from .static_bitmap import *
 from .check_box import *
 from .message_box import *
+from .toggle_switch import *

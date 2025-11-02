@@ -118,15 +118,19 @@ class Widget(wx.Window):
         super().CacheBestSize(translate_size(size))
 
     def RawSetSize(self, size: tuple[int, int]):
+        """注意数值必须为int"""
         super().SetSize(size)
 
     def RawSetMinSize(self, size: tuple[int, int]):
+        """注意数值必须为int"""
         super().SetMinSize(size)
 
     def RawSetMaxSize(self, size: tuple[int, int]):
+        """注意数值必须为int"""
         super().SetMaxSize(size)
 
     def RawCacheBestSize(self, size: tuple[int, int]):
+        """注意数值必须为int"""
         super().CacheBestSize(size)
 
     # 主题函数

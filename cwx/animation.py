@@ -179,6 +179,14 @@ class KeyFrameAnimation(Animation):
                 else:
                     eased = 1 - ((-2 * local_percent + 2) ** 3) / 2
                 return start + size * eased
+            case KeyFrameCurves.QUADRATIC_EASE_IN:
+                return start + size * (local_percent ** 2)
+            case KeyFrameCurves.CUBE_EASE_IN:
+                return start + size * (local_percent ** 3)
+            case KeyFrameCurves.QUADRATIC_EASE_OUT:
+                return start + size * (1 - (1 - local_percent) ** 2)
+            case KeyFrameCurves.CUBE_EASE_OUT:
+                return start + size * (1 - (1 - local_percent) ** 3)
         raise NotImplementedError()
 
     def set_invent(self, invent: bool):
@@ -279,6 +287,10 @@ class MultiColorGradientAnimation(Animation):
         self.current_color: wx.Colour = self.colors[self.current_name]
         self.start_color: wx.Colour = self.current_color
         self.last_color: wx.Colour = self.current_color
+
+    def set_default_target(self, name: str):
+        self.current_name = name
+        self.current_color = self.colors[name]
 
     def set_target(self, name: str, invent: bool = False):
         """设置目标颜色, 颜色将会从当前颜色渐变至"""

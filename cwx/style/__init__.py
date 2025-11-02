@@ -5,15 +5,17 @@ from .frame.struct import *
 
 
 class Style:
+    """整个应用程序的样式, 包含了各种组件的组件样式"""
     default_style: 'WidgetStyle'
     frame_style: 'TopLevelStyle'
     btn_style: 'BtnStyle'
     textctrl_style: 'TextCtrlStyle'
     static_line_style: 'StaticLineStyle'
     progress_bar_style: 'ProgressBarStyle'
+    toggle_switch_style: 'ToggleSwitchStyle'
 
-    def __init__(self, colors: Colors | None = None):
-        self.is_dark = Style.sys_is_dark()
+    def __init__(self, is_dark: bool = None, colors: Colors | None = None):
+        self.is_dark = is_dark if is_dark is not None else self.sys_is_dark()
         if colors is None:
             colors = Colors.default(self.is_dark)
         self.colors = colors
@@ -28,6 +30,7 @@ class Style:
         self.textctrl_style = TextCtrlStyle.load(self)
         self.static_line_style = StaticLineStyle.load(self)
         self.progress_bar_style = ProgressBarStyle.load(self)
+        self.toggle_switch_style = ToggleSwitchStyle.load(self)
 
     @staticmethod
     def sys_is_dark():
@@ -35,7 +38,7 @@ class Style:
         return wx.SystemSettings.GetAppearance().IsDark()
 
     def set_as_light(self):
-        """设置主题为亮色模式, 将会以变更过后的颜色重新加载组件主题"""
+        """设置主题为亮色模式, 将会以变更过后的颜色重新加载组件主题, 建议直接使用Style(False)"""
         self.colors = Colors.default(False)
         self.is_dark = False
 
@@ -44,7 +47,7 @@ class Style:
         return self
 
     def set_as_dark(self):
-        """设置主题为暗色模式, 将会以变更过后的颜色重新加载组件主题"""
+        """设置主题为暗色模式, 将会以变更过后的颜色重新加载组件主题, 建议直接使用Style(True)"""
         self.colors = Colors.default(True)
         self.is_dark = True
 
@@ -136,7 +139,7 @@ class Border(MixedStateColor):
 
 class WidgetStyle:
     """
-    用于记录组件绘制的颜色、边框等信息, 注意样式信息应当不进行DPI转换
+    用于记录组件绘制的颜色、边框等信息, 注意样式信息应当不经过DPI转换
     Including information about widget's drawing, such as color, border
     """
 
@@ -401,15 +404,23 @@ class CheckBoxStyle(WidgetStyle):
 
 
 class ToggleSwitchStyle(WidgetStyle):
-    def __init__(self,
-                 box_bg: GradientBrush, box_hover_bg: GradientBrush, box_active_bg: GradientBrush,
-                 box_border: GradientPen, box_sym: GradientBrush,
-                 ):
-        super().__init__()
-        self.box_bg: GradientBrush = box_bg
-        self.box_hover_bg: GradientBrush = box_hover_bg
-        self.box_active_bg: GradientBrush = box_active_bg
-        self.box_border: GradientPen = box_border
-        self.box_sym: GradientBrush = box_sym
+    def __init__(self, bg: Background, active_bg: Background, border: Border, sym: GradientBrush, active_sym: GradientBrush):
+        super().__init__(bg=bg)
+        self.active_bg: Background = active_bg
+        self.border: Border = border
+        self.sym: GradientBrush = sym
+        self.active_sym: GradientBrush = active_sym
 
+        self.border_width: float = 1
         self.box_radius: float = 10
+        self.sym_radius: float = 6
+
+    @classmethod
+    def load(cls, style: Style) -> 'ToggleSwitchStyle':
+        return cls(
+            bg=Background.from_colors(style.colors.control_fill),
+            active_bg=Background.from_colors(style.colors.accent_fill),
+            border=Border.from_colors(style.colors.control_strong_stroke),
+            sym=GradientBrush(style.colors.control_strong.default),
+            active_sym=GradientBrush(wx.BLACK if style.is_dark else wx.WHITE)
+        )

@@ -19,15 +19,14 @@ class AnimationOverEvent(wx.PyCommandEvent):
 class AnimationWidget(Widget):
     """
     具有自动动画管理的组件
-    如何实现:
-    1. 重写 `animation_callback` 方法, 该方法在每动画帧调用
+    需要重写 `animation_callback` 方法, 该方法在每动画帧调用, 而且我们不会帮你自动刷新控件
 
     A widget with auto animation manage.
     How to implement:
     1. Rewrite method `animation_callback`, this method will call in each animation frame.
     """
 
-    def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 1):
+    def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 60):
         super().__init__(parent, style, widget_style)
         self.fps = fps
         self.allow_multi_anim: bool = True
@@ -123,7 +122,7 @@ class AnimationWidget(Widget):
 
     def animation_callback(self):
         """
-        动画回调函数, 你应该在这里处理组件数据更新逻辑
+        动画回调函数, 你应该在这里处理组件数据更新逻辑, 我们不会帮你自动刷新控件
         Animation callback function, you should process widget update here.
         """
         pass
