@@ -43,7 +43,7 @@ class ToggleSwitch(AnimationWidget):
 
     def init_animation(self):
         """初始按钮动画的函数"""
-        during = 0.1
+        during = 0.2
         self.bg_anim = self.OwnMultiColorAnimation(
             during,
             ("off", self.style.bg.normal), ("off_hover", self.style.bg.hover),
@@ -140,12 +140,11 @@ class ToggleSwitch(AnimationWidget):
             # 绘制背景
             gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
             if self.is_on:
-                gc.SetPen(gc.TRANSPARENT_PEN)
-                gc.DrawInnerRoundedRect(0, 0, 40 * SCALE, 20 * SCALE, self.style.box_radius * SCALE,
-                                        self.style.border_width * SCALE)
+                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_bg)))
             else:
                 gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border)))
-                gc.DrawRoundedRectangle(0, 0, 40 * SCALE, 20 * SCALE, self.style.box_radius * SCALE)
+            gc.DrawInnerRoundedRect(0, 0, 40 * SCALE, 20 * SCALE, self.style.box_radius * SCALE,
+                                        self.style.border_width * SCALE)
 
             # 绘制开关
             if self.is_on:
@@ -155,7 +154,7 @@ class ToggleSwitch(AnimationWidget):
             cx = (self.sym_anim.value * (self.sym_pos[1] - self.sym_pos[0])) + self.sym_pos[0]
             cy = 10 * SCALE
             radius = self.style.sym_radius * SCALE
-            gc.DrawEllipse(cx - radius, cy - radius, radius * 2, radius * 2)
+            gc.DrawEllipse(cx - radius, cy - radius - 0.5, radius * 2, radius * 2)
 
     def SetLabel(self, label: str):
         super().SetLabel(label)
