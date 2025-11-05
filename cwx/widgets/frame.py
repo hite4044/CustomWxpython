@@ -1,4 +1,5 @@
 import typing
+from os.path import abspath
 
 import wx
 
@@ -6,6 +7,7 @@ from cwx.render import CustomGraphicsContext
 from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
+from cwx.tools import set_multi_size_icon
 from cwx.widgets import Widget, TopWindowCanvas
 
 
@@ -27,6 +29,7 @@ class TopLevelWrapper(Widget):
 
         # self.Refresh = lambda :None
         super().SetBackgroundColour(wx.BLACK)
+        set_multi_size_icon(typing.cast(wx.TopLevelWindow, self), abspath("cwx/assets/icon.png"))
 
     def EnableWindowComposition(self,
                                 enable: bool = True,
