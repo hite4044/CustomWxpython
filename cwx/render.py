@@ -12,7 +12,6 @@ from PIL import ImageFont, Image, ImageDraw, ImageEnhance
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
-from .animation import Animation
 from .dpi import SCALE
 from .tool.image_pil2wx import PilImg2WxImg
 
@@ -113,54 +112,6 @@ class JumpSubClassCheck:
 
 
 JumpSubClassCheck.GCType = typing.cast(type[wx.GraphicsContext], object)
-
-
-class AnimationElement:
-    def __init__(self, anim: Animation):
-        self.anim = anim
-
-    def draw(self, gc: 'CustomGraphicsContext'):
-        pass
-
-
-class DrawLinesAE(AnimationElement):
-    def __init__(self, anim: Animation, point2Ds: list[wx.Point2D] = None,
-                 fill_style: wx.PolygonFillMode = wx.ODDEVEN_RULE):
-        super().__init__(anim)
-        self.point2Ds: list[wx.Point2D] = point2Ds
-        self.fill_style = fill_style
-
-    def draw(self, gc: 'CustomGraphicsContext'):
-        if self.point2Ds is None:
-            return
-
-        value = self.anim.value
-        if value == 0:
-            return
-        if value == 1:
-            gc.DrawLines(self.point2Ds, self.fill_style)
-            return
-
-        point2Ds = self.point2Ds
-        active_points = [point2Ds[0]]
-        distances = [point2Ds[i].GetDistance(point2Ds[i + 1]) for i in range(len(point2Ds) - 1)]
-        total_distance = sum(distances)
-        left_distance = total_distance * min(max(value, 0), 1)
-        distance = 0
-        for i, distance in enumerate(distances):
-            active_points.append(point2Ds[i + 1])
-            if left_distance <= distance:
-                break
-            left_distance -= distance
-        if left_distance != 0:
-            last_second_pt = wx.Point2D(active_points[-2])
-            last_pt = wx.Point2D(active_points[-1])
-            percent = left_distance / distance
-            last_pt[0] = last_second_pt[0] + (last_pt[0] - last_second_pt[0]) * percent
-            last_pt[1] = last_second_pt[1] + (last_pt[1] - last_second_pt[1]) * percent
-            active_points[-1] = last_pt
-
-        gc.DrawLines(active_points, wx.ODDEVEN_RULE)
 
 
 class StateClass:
@@ -290,7 +241,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         """
         return StateClass(self.gc)
 
-    def DrawAnimationElement(self, element: AnimationElement):
+    def DrawAnimationElement(self, element):
         """绘制一个动画元素"""
         element.draw(self)
 
@@ -345,7 +296,8 @@ class GCRender:
         return font
 
     @staticmethod
-    def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font, text_enchant: bool = True, enchant_factor: float = 0.25) -> \
+    def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font,
+                              text_enchant: bool = True, enchant_factor: float = 0.25) -> \
             tuple[wx.GraphicsBitmap, tuple[int, int]]:
         """渲染一个透明度文字"""
         window = gc.GetWindow()

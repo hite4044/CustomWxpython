@@ -6,8 +6,9 @@ from ..animation import KeyFrameCurves, MAKE_ANIMATION
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
 from ..lib.flag_parser import parse_flag
-from ..render import CustomGraphicsContext, DrawLinesAE
+from ..render import CustomGraphicsContext
 from ..style import WidgetStyle, CheckBoxStyle, Style
+from ..lib.animation_elements import DrawLinesAE
 
 cwxEVT_CHECKBOX = wx.NewEventType()
 EVT_CHECKBOX = wx.PyEventBinder(cwxEVT_CHECKBOX, 1)
