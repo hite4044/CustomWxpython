@@ -9,7 +9,6 @@ def set_multi_size_icon(toplevel: wx.TopLevelWindow, path: str):
     for size in sizes:
         scaled = raw.Copy()
         scaled = scaled.Rescale(size, size, wx.IMAGE_QUALITY_HIGH)
-        print(scaled.GetSize())
         icons.AddIcon(wx.Icon(scaled.ConvertToBitmap()))
     icons.AddIcon(wx.Icon(raw.ConvertToBitmap()))
     toplevel.SetIcons(icons)

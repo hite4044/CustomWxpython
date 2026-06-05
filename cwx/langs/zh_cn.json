@@ -1,0 +1,11 @@
+{
+  "widgets": {
+    "message_dialog": {
+      "ok": "OK",
+      "ok_with_cancel": "确定",
+      "yes": "是",
+      "no": "否",
+      "cancel": "取消"
+    }
+  }
+}

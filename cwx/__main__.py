@@ -1,5 +1,6 @@
 from time import perf_counter
 
+from cwx import CustomGraphicsContext
 
 timer = perf_counter()
 import wx
@@ -13,23 +14,26 @@ faulthandler.enable()
 class Frame(cwx.Frame):
     def __init__(self):
         super().__init__(None, -1, "Custom Wxpython", size=(700, 500))
-        style = cwx.DefaultStyle.DEFAULT
-        style.set_as_dark()
-        style.frame_style.backdrop_type = cwx.BackdropType.MICA
+        CustomGraphicsContext.force_transparent_text = True
+
+        style = cwx.Style(is_dark=True)
+        # style.frame_style.backdrop_type = cwx.BackdropType.MICA_ALT
+        # style.frame_style.bg = wx.Colour(44, 44, 44)
+        # style.frame_style.bg = wx.Colour(243, 243, 243)
 
         self.load_style(style)
 
-        self.SetFont(ft(9))
+        self.SetFont(ft(10))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        st = cwx.StaticText(self, label="🤓🔔Custom Wxpython\nPython is the best language.\nBy hite404")
-        st.SetFont(
-           wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Segoe UI Emoji"))
+        st = cwx.StaticText(self,
+                            label="The brushes below are part of WinUl 3 and you can reference them in your app. For example:")
 
         sizer.Add(st)
 
         btn = cwx.HyperlinkButton(self, "点我啊!")
+        btn.url = "https://space.bilibili.com/277685481"
         sizer.Add(btn, 0)
 
         btn = cwx.Button(self, "Standard XAML Button")
@@ -56,22 +60,27 @@ class Frame(cwx.Frame):
             wx.CallLater(3000, func1)
 
         # wx.CallLater(1000, func1)
-        wx.CallLater(2000, btn.Disable)
-        wx.CallLater(4000, btn.Enable)
+        # wx.CallLater(2000, btn.Disable)
+        # wx.CallLater(4000, btn.Enable)
         sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 5)
 
         sizer.AddSpacer(5)
 
         sizer.Add(cwx.StaticLine(self), 0, wx.EXPAND)
 
-        sizer.AddStretchSpacer()
+        # sizer.AddStretchSpacer()
 
-        sizer.Add(cwx.CheckBox(self, "Check ME!", style=wx.CHK_CHECKED | wx.ALIGN_RIGHT), 1, wx.EXPAND)
+        # sizer.Add(cwx.CheckBox(self, "我是谁？", style=wx.CHK_CHECKED | wx.ALIGN_RIGHT), 1, wx.EXPAND)
+        sizer.Add(cwx.ToggleSwitch(self, label="Toggle Switch"), 0)
 
         self.SetSizer(sizer)
 
-        dlg = cwx.MessageDialog(self, "This is a message dialog", "Message", wx.OK)
-        wx.CallLater(1000, dlg.ShowModal)
+        # light_style = self.gen_style.copy()
+        # light_style.set_as_light()
+        # wx.CallLater(5000, self.load_style, light_style)
+
+        # dlg = cwx.MessageDialog(self, "This is a message dialog", "Message", wx.OK)
+        # wx.CallLater(1000, dlg.ShowModal)
 
 
 app = wx.App()

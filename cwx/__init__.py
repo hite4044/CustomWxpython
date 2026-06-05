@@ -46,6 +46,8 @@ __all__ = [
     # Event
     "EVT_BUTTON",
     "ButtonEvent",
+    "EVT_TEXT",
+    "TextEvent",
 
     # Other
     "ft",

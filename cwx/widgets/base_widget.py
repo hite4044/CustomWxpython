@@ -196,7 +196,7 @@ class Widget(wx.Window):
         timer = Counter(create_start=True)
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(dc))
         self.draw_content(gc)
-        print(f"{self.__class__.__name__}: {timer.endT()}")
+        # print(f"{self.__class__.__name__}: {timer.endT()}")
 
     def draw_content(self, gc: CustomGraphicsContext):
         pass

@@ -12,8 +12,8 @@ from PIL import ImageFont, Image, ImageDraw, ImageEnhance
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
-from .dpi import SCALE
-from .tool.image_pil2wx import PilImg2WxImg
+from cwx.dpi import SCALE
+from cwx.tool.image_pil2wx import PilImg2WxImg
 
 
 @dataclass
@@ -144,7 +144,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
     TRANSPARENT_PEN = _FACTORY_GC.CreatePen(wx.GraphicsPenInfo(wx.BLACK, 0, wx.PENSTYLE_TRANSPARENT))
     font_trace_map: dict[int, wx.Font] = {}
 
-    force_transparent_text = False
+    force_transparent_text = True
 
     def __new__(cls, *args, **kwargs):
         if cls.TRANSPARENT_BRUSH is None:
@@ -152,8 +152,7 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         return super().__new__(cls)
 
     def __init__(self, gc: wx.GraphicsContext):
-        if 1 * 1.0 == 0:
-            super().__init__()  # Never Called
+        object.__init__(self)
 
         self.gc = gc
         self.current_font: wx.Font | None = None

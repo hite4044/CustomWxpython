@@ -92,7 +92,7 @@ class ButtonBase(AnimationWidget):
     def update_size(self):
         width, height = self.get_content_size()
         size = (int(width + 32 * SCALE), int(height + 16 * SCALE))
-        self.RawSetSize(size)
+        self.RawCacheBestSize(size)
         self.RawSetMinSize(size)
 
     @staticmethod

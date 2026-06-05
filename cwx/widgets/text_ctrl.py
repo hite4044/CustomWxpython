@@ -1,7 +1,15 @@
 import wx
 
+from cwx.event import SimpleCommandEvent
 from cwx.style import WidgetStyle
 from cwx.widgets.base_widget import Widget
+
+cwxEVT_TEXT = wx.NewEventType()
+EVT_TEXT = wx.PyEventBinder(cwxEVT_TEXT, 1)
+
+
+class TextEvent(SimpleCommandEvent):
+    eventType: int = cwxEVT_TEXT
 
 
 

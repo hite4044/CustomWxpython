@@ -3,6 +3,8 @@ from typing import cast as type_cast
 
 import wx
 
+from cwx.widgets.text_ctrl import TextEvent
+
 from .animation_widget import AnimationWidget
 from ..render import CustomGraphicsContext
 from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradientAnimation
@@ -25,8 +27,8 @@ class TextCtrl(AnimationWidget):
     def __init__(self, parent: wx.Window, text: str, widget_style: TextCtrlStyle = None):
         super().__init__(parent, widget_style=widget_style, fps=60)
         self.text = text  # 文本
-        self.cursor_char = 6  # 当前光标位置
-        self.select_start: int | None = 3  # 当前选择的文本的起始位置
+        self.cursor_char = 0  # 当前光标位置
+        self.select_start: int | None = None  # 当前选择的文本的起始位置
         self.calc_size()
 
         self.box_extent: tuple[int, int, int, int] | None = None  # 文本框外框
@@ -214,6 +216,7 @@ class TextCtrl(AnimationWidget):
             self.cursor_char -= length
         self.select_start = None
         self.load_text_extends()
+        self.ProcessEvent(TextEvent(self))
         self.Refresh()
 
     def InsertValue(self, pos: int, value: str):
@@ -224,6 +227,7 @@ class TextCtrl(AnimationWidget):
             self.cursor_char += length
         self.select_start = None
         self.load_text_extends()
+        self.ProcessEvent(TextEvent(self))
         self.Refresh()
 
     def on_mouse_event(self, event: wx.MouseEvent):

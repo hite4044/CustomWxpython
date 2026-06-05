@@ -2,7 +2,6 @@ import platform
 from math import ceil
 from typing import cast as type_cast
 
-import cairo
 import wx
 
 from .base_widget import Widget
@@ -36,6 +35,6 @@ class StaticText(Widget):
 
     def draw_content(self, gc: CustomGraphicsContext):
         gc.SetFont(gc.CreateFont(self.GetFont(), col=self.style.fg))
-        timer = Counter(create_start=True)
+        #timer = Counter(create_start=True)
         gc.DrawText(self.GetLabel(), 0, 0)
-        print(timer.endT())
+        #print(timer.endT())

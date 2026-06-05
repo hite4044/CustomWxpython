@@ -345,6 +345,7 @@ class Colors:
 
 
     def __init__(self,
+                 is_dark: bool,
                  text: Text,
                  accent_text: AccentText,
                  control_fill: ControlFill,
@@ -357,6 +358,8 @@ class Colors:
                  fg: wx.Colour,
                  bg: wx.Colour,
                  border: wx.Colour):
+        self.is_dark = is_dark
+
         self.text = text
         self.accent_text = accent_text
         self.control_fill = control_fill
@@ -382,6 +385,7 @@ class Colors:
     @staticmethod
     def default(for_dark: bool):
         return Colors(
+            is_dark=for_dark,
             text=Colors.Text.load(for_dark),
             accent_text=Colors.AccentText.load(for_dark),
             control_fill=Colors.ControlFill.load(for_dark),
