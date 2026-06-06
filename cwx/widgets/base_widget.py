@@ -234,7 +234,7 @@ class TopWindowCanvas:
         self.pos_test_window.SetPosition((0, 0))
         self.pos_test_window.SetSize((1, 1))
 
-        self.alpha_buffer = b"\x00" * 1024 * 1024
+        self.alpha_buffer = b"\x00" * 1920 * 1080
         self.buffer = None
 
     @staticmethod
@@ -332,6 +332,8 @@ class TopWindowCanvas:
         else:  # 绘制内容到图片里
             # print("Redraw", window.__class__.__name__)
             image = wx.Image(*size, clear=True)
+            if size[0] == 0 or size[1] == 0:
+                return
             image.SetAlphaBuffer(self.alpha_buffer)
             low_gc = wx.GraphicsContext.Create(image)
             low_gc.GetWindow = lambda: root_window

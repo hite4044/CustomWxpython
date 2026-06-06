@@ -71,6 +71,12 @@ class Animation:
     def raw_get_value(self, percent: float) -> float:
         return percent
 
+    def __hash__(self):
+        return hash(id(self))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
 
 class BlinkAnimation(Animation):
     def __init__(self, range_: tuple[Num, Num], threshold: float):

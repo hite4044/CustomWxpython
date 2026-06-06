@@ -1,3 +1,5 @@
+import wx
+
 from cwx.lib.settings import GlobalSettings
 from cwx.style.frame.dwm import DWM_SYSTEMBACKDROP_TYPE, ACCENT_STATE
 from .color import *
@@ -372,40 +374,37 @@ class ProgressBarStyle(WidgetStyle):
 
 class CheckBoxStyle(WidgetStyle):
     def __init__(self,
-                 fg: wx.Colour, box_active_bg: GradientBrush, box_hover_bg: GradientBrush,
-                 box_sym_pen: GradientPen, box_border: GradientPen,
+                 fg: wx.Colour,
+                 sym_fg: GradientPen, box_bg: Background, active_bg: Background, border: Background,
                  box_corner_radius: float, box_size: float):
         """
         Args:
             fg: label's color.
-            box_active_bg: background color when the box is active.
-            box_sym_pen: symbol's color (in the box).
-            box_border: border color of the box.
         """
         super().__init__(fg)
-        self.box_active_bg: GradientBrush = box_active_bg
-        self.box_hover_bg: GradientBrush = box_hover_bg
-        self.box_sym: GradientPen = box_sym_pen
-        self.box_border: GradientPen = box_border
+        self.sym_pen: GradientPen = sym_fg
+        self.box_bg: Background = box_bg
+        self.active_bg: Background = active_bg
+        self.border: Background = border
         self.box_corner_radius: float = box_corner_radius
         self.box_size: float = box_size
 
     @classmethod
     def load(cls, style: Style) -> 'CheckBoxStyle':
         return cls(
-            style.colors.fg,
-            GradientBrush(style.colors.primary),
-            GradientBrush(wx.Colour(255, 255, 255, 10) if style.is_dark else wx.Colour(0, 0, 0, 10)),
-            GradientPen(style.colors.fg, width=2),
-            GradientPen(style.colors.border, width=1),
+            Foreground.from_colors(style.colors.text),
+            GradientPen(GradientBrush(wx.BLACK if style.is_dark else wx.WHITE), width=2),
+            Background.from_colors(style.colors.control_fill),
+            Background.from_colors(style.colors.accent_fill),
+            Background.from_colors(style.colors.control_strong_stroke),
             3,
             20
         )
 
 
 class ToggleSwitchStyle(WidgetStyle):
-    def __init__(self, bg: Background, active_bg: Background, border: Border, sym: GradientBrush, active_sym: GradientBrush):
-        super().__init__(bg=bg)
+    def __init__(self, fg: Foreground, bg: Background, active_bg: Background, border: Border, sym: GradientBrush, active_sym: GradientBrush):
+        super().__init__(fg, bg)
         self.active_bg: Background = active_bg
         self.border: Border = border
         self.sym: GradientBrush = sym
@@ -418,6 +417,7 @@ class ToggleSwitchStyle(WidgetStyle):
     @classmethod
     def load(cls, style: Style) -> 'ToggleSwitchStyle':
         return cls(
+            fg=Foreground.from_colors(style.colors.text),
             bg=Background.from_colors(style.colors.control_fill),
             active_bg=Background.from_colors(style.colors.accent_fill),
             border=Border.from_colors(style.colors.control_strong_stroke),

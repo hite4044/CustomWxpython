@@ -140,9 +140,9 @@ class ToggleSwitch(AnimationWidget):
             # 绘制背景
             gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
             if self.is_on:
-                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_bg)))
+                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_bg, width=0)))
             else:
-                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border)))
+                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border, width=round(SCALE))))
             gc.DrawInnerRoundedRect(0, 0, 40 * SCALE, 20 * SCALE, self.style.box_radius * SCALE,
                                         self.style.border_width * SCALE)
 
@@ -159,7 +159,7 @@ class ToggleSwitch(AnimationWidget):
     def SetLabel(self, label: str):
         super().SetLabel(label)
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
-        gc.SetFont(gc.CreateFont(self.GetFont(), self.style.fg))
+        gc.SetFont(self.GetFont(), self.style.fg)
         self.refresh_extent(gc)
         size = (int((40 + self.LABEL_PAD) * SCALE + self.text_extent[0]), int(max(30 * SCALE, self.text_extent[1])))
         self.RawSetMinSize(size)
@@ -178,7 +178,7 @@ class ToggleSwitch(AnimationWidget):
             text_color = self.style.fg.normal
 
         label = self.GetLabel()
-        gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
+        gc.SetFont(self.GetFont(), text_color)
         self.refresh_extent(gc)
         with gc.State:
             gc.Translate(self.text_extent[2], self.text_extent[3])

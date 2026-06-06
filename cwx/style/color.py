@@ -230,7 +230,7 @@ class Colors:
         @classmethod
         def load(cls, for_dark: bool):
             return cls(
-                primary=wx.WHITE if for_dark else wx.Colour(26, 26, 26),
+                primary=wx.WHITE if for_dark else wx.BLACK,
                 secondary=wx.Colour(204, 204, 204) if for_dark else wx.Colour(92, 92, 92),
                 tertiary=wx.Colour(150, 150, 150) if for_dark else wx.Colour(134, 134, 134),
                 disabled=wx.Colour(113, 113, 113) if for_dark else wx.Colour(155, 155, 155)
@@ -324,9 +324,9 @@ class Colors:
         @classmethod
         def load(cls, for_dark: bool):
             return cls(
-                default=CT.set_lum(TheDefaultColors.PRIMARY, 0.65),
-                secondary=CT.set_lum(TheDefaultColors.PRIMARY, 0.5),
-                tertiary=CT.set_lum(TheDefaultColors.PRIMARY, 0.35),
+                default=CT.set_lum(TheDefaultColors.PRIMARY, 0.55),
+                secondary=CT.set_lum(TheDefaultColors.PRIMARY, 0.45),
+                tertiary=CT.set_lum(TheDefaultColors.PRIMARY, 0.3),
                 disabled=wx.Colour(0, 0, 0, 0x37)
             )
 
@@ -384,7 +384,7 @@ class Colors:
 
     @staticmethod
     def default(for_dark: bool):
-        return Colors(
+        colors = Colors(
             is_dark=for_dark,
             text=Colors.Text.load(for_dark),
             accent_text=Colors.AccentText.load(for_dark),
@@ -399,6 +399,8 @@ class Colors:
             bg=wx.BLACK,
             border=wx.Colour(0, 0, 0, 15)
         )
+        colors.fg = colors.text.primary
+        return colors
 
 
 class GradientDir(Enum):

@@ -2,7 +2,9 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
-from ..animation import KeyFrameCurves, MAKE_ANIMATION
+from ..animation.adv_anim import StateGradientAnimation
+from ..animation.state_color_wrap import StateAnimManager
+from ..animation import KeyFrameCurves, MAKE_ANIMATION, ColorGradientAnimation
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
 from ..lib.flag_parser import parse_flag
@@ -29,14 +31,17 @@ class CheckBoxEvent(SimpleCommandEvent):
         return self.state
 
 
-class CheckBox(AnimationWidget):
+class CheckBox(AnimationWidget, StateAnimManager):
     WND_NAME = "check"
     style: CheckBoxStyle
     check_sym_am: DrawLinesAE
+    box_anim: StateGradientAnimation
+    box_bg_anim: ColorGradientAnimation
 
-    LABEL_PAD = 5 * SCALE
+    PAD = 5 * SCALE
 
     def __init__(self, parent: wx.Window, label: str = "", style=0, widget_style: WidgetStyle = None):
+        StateAnimManager.__init__(self)
         super().__init__(parent, style, widget_style, fps=60)
 
         self.current_state: wx.CheckBoxState = \
@@ -47,6 +52,17 @@ class CheckBox(AnimationWidget):
 
         self.mask_state: MaskState = MaskState.NONE  # 指示是否绘制点击图层
         self.check_sym_am = self.reg_anim_element("check", DrawLinesAE(MAKE_ANIMATION(0.2, KeyFrameCurves.SMOOTH), []))
+        self.box_anim = StateGradientAnimation(0.1, self.style.box_bg)
+        self.box_active_anim = StateGradientAnimation(0.1, self.style.active_bg)
+        self.crt_normal_bg = wx.Colour(self.box_anim.value)
+        self.crt_active_bg = wx.Colour(self.box_active_anim.value)
+        self.reg_state_animation("normal_box_bg", "crt_normal_bg", self.box_anim)
+        self.reg_state_animation("active_box_bg", "crt_active_bg", self.box_active_anim)
+        self.box_bg_anim = ColorGradientAnimation(0.15, self.crt_normal_bg, self.crt_active_bg)
+        self.reg_animation("box_bg", self.box_bg_anim)
+        self.border_anim = StateGradientAnimation(0.1, self.style.border)
+        self.crt_border = wx.Colour(self.border_anim.value)
+        self.reg_state_animation("border", "crt_border", self.border_anim)
 
         self.text_extent: tuple[float, float, float, float] = (1.0, 1.0, 0.0, 0.0)
 
@@ -56,6 +72,7 @@ class CheckBox(AnimationWidget):
             self.stop_animation("check")
 
     def animation_callback(self):
+        self.own_animation_callback()
         self.Refresh()
 
     def on_mouse_events(self, event: wx.MouseEvent):
@@ -75,7 +92,7 @@ class CheckBox(AnimationWidget):
                     self.current_state = wx.CHK_UNCHECKED
             elif wx.CHK_UNDETERMINED:
                 self.current_state = wx.CHK_UNCHECKED
-            self.send_event()
+            self.on_change_state()
             self.Refresh()
 
         elif event.Moving() or event.Dragging() or event.IsButton():  # 处理遮罩状态更改
@@ -90,25 +107,40 @@ class CheckBox(AnimationWidget):
             if self.mask_state != last_state:
                 self.Refresh()
 
-    def send_event(self):
+    def on_change_state(self):
         event = CheckBoxEvent(self, self.current_state == wx.CHK_CHECKED, self.current_state)
         self.ProcessEvent(event)
+        if self.current_state == wx.CHK_CHECKED:
+            self.box_bg_anim.set_invent(False)
+        elif self.current_state == wx.CHK_UNCHECKED:
+            self.box_bg_anim.set_invent(True)
+        self.box_bg_anim.set_color(self.box_anim.value, self.box_active_anim.value)
+        self.play_animation("box_bg")
 
     def SetLabel(self, label: str):
         super().SetLabel(label)
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
-        gc.SetFont(gc.CreateFont(self.GetFont(), self.style.fg))
+        gc.SetFont(self.GetFont(), self.style.fg)
         self.refresh_extent(gc)
+        self.refresh_size()
 
     def refresh_extent(self, gc: CustomGraphicsContext):
         self.text_extent = gc.GetFullTextExtent(self.GetLabel())
+
+    def refresh_size(self):
+        h = self.style.box_size * SCALE + self.PAD * 2
+        size = (int(h + self.text_extent[0]) + 100, int(h))
+        self.RawSetMinSize(size)
+        self.RawCacheBestSize(size)
 
     def get_box_info(self) -> tuple[tuple[float, float], tuple[float, float]]:
         """获取勾选框位置"""
         w, h = self.GetTupClientSize()
         box_size = (self.style.box_size * SCALE,) * 2
-        delta = self.text_extent[0] if self.align_right else -self.text_extent[0]
-        box_pos = (w - box_size[0] + delta) / 2, (h - box_size[1]) / 2
+        if not self.align_right: # left
+            box_pos = (self.PAD, (h - box_size[1]) / 2)
+        else: # right
+            box_pos = (w - self.PAD - box_size[0], (h - box_size[1]) / 2)
         return box_pos, box_size
 
     def draw_content(self, gc: CustomGraphicsContext):
@@ -117,20 +149,23 @@ class CheckBox(AnimationWidget):
         radius = self.style.box_corner_radius * SCALE
         with gc.State:
             gc.Translate(*box_pos)
-            if self.current_state in [wx.CHK_CHECKED, wx.CHK_UNDETERMINED]:  # 绘制选中或者半选中
-                # 绘制背景
-                self.style.box_active_bg.reset()
-                if self.mask_state == MaskState.PRESSED:
-                    self.style.box_active_bg.dark2() if self.gen_style.is_dark else self.style.box_active_bg.light2()
-                elif self.mask_state == MaskState.HOVER:
-                    self.style.box_active_bg.dark1() if self.gen_style.is_dark else self.style.box_active_bg.light1()
-                gc.SetBrush(self.style.box_active_bg.create_brush(gc, box_size))
-                gc.DrawRoundedRectangle(0, 0, *box_size, radius)
+            # 绘制背景
+            if self.box_bg_anim.is_playing:
+                box_bg_color = self.box_bg_anim.value
+            else:
+                box_bg_color = self.crt_normal_bg if self.current_state == wx.CHK_UNCHECKED else self.crt_active_bg
+            gc.SetBrush(wx.Brush(box_bg_color))
+            if self.current_state in [wx.CHK_CHECKED, wx.CHK_UNDETERMINED]:
+                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(box_bg_color, width=0)))
+            else:
+                gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border, width=round(SCALE))))
+            gc.DrawRoundedRectangle(0, 0, *box_size, radius)
 
+            if self.current_state in [wx.CHK_CHECKED, wx.CHK_UNDETERMINED]:  # 绘制选中或者半选中
                 # 绘制勾选符号
-                gc.SetPen(self.style.box_sym.create_pen(gc, box_size))
+                gc.SetPen(self.style.sym_pen.create_pen(gc, box_size))
                 if self.current_state == wx.CHK_CHECKED:
-                    x, y = 0.22, 0.25
+                    x, y = 0.22, 0.3
                     PTS = [(0.08 + x, 0.28 + y), (0.24 + x, 0.4 + y),
                            (0.52 + x, 0.08 + y)]  # 200%缩放下 - [(2, 7), (6, 10), (13, 2)]
                 elif self.current_state == wx.CHK_UNDETERMINED:
@@ -139,24 +174,17 @@ class CheckBox(AnimationWidget):
                 self.check_sym_am.point2Ds = point2Ds
                 gc.DrawAnimationElement(self.check_sym_am)
 
-            elif self.current_state == wx.CHK_UNCHECKED:  # 绘制未选中
-                if self.mask_state == MaskState.HOVER:
-                    gc.SetBrush(self.style.box_hover_bg.create_brush(gc, box_size))
-                else:
-                    gc.SetBrush(gc.TRANSPARENT_BRUSH)
-                gc.SetPen(self.style.box_border.create_pen(gc, box_size))
-                gc.DrawInnerRoundedRect(0, 0, *box_size, radius, self.style.box_border.width)
-            else:
-                raise NotImplementedError("不要自己偷偷改current_state啊...怎么渲染我都不知道了")
-
         # 绘制文字
-        gc.SetFont(gc.CreateFont(self.GetFont(), self.style.fg))
-        self.refresh_extent(gc)
+        gc.SetFont(self.GetFont(), self.style.fg)
         w, h = self.GetTupClientSize()
-        delta = -box_size[0] * 2 if self.align_right else box_size[0]
-        gc.DrawText(self.GetLabel(),
-                    (w - self.text_extent[0] + delta) / 2 + self.LABEL_PAD,
-                    (h - self.text_extent[1]) / 2)
+        if not self.align_right:
+            x = box_pos[0] * 2 + box_size[0]
+            y = h / 2
+            gc.DrawText(self.GetLabel(), x, y, center_align="left")
+        else:
+            x = box_pos[0] - self.PAD
+            y = h / 2
+            gc.DrawText(self.GetLabel(), x, y, center_align="right")
 
     @staticmethod
     def translate_style(style: Style) -> CheckBoxStyle:

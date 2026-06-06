@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
 from math import ceil
+from typing import Union
 
 import wx
 from PIL import ImageFont, Image, ImageDraw, ImageEnhance
@@ -13,6 +14,8 @@ from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
 from cwx.dpi import SCALE
+from cwx.render.constants import CenterAlign
+from cwx.render.text import TextAttr, TextParagraph, AdvancedText, TextRender
 from cwx.tool.image_pil2wx import PilImg2WxImg
 
 
@@ -155,8 +158,9 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         object.__init__(self)
 
         self.gc = gc
-        self.current_font: wx.Font | None = None
         self.window = gc.GetWindow()
+        self.current_font: wx.Font = self.window.GetFont()
+        self.current_font_color: wx.Colour = self.window.GetForegroundColour()
         self.is_dark = getattr(self.window, "gen_style").is_dark if hasattr(self.window, "gen_style") else False
 
         if self.force_transparent_text:
@@ -175,57 +179,75 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         except AttributeError:
             return getattr(self.gc, name)
 
-    def CreateFont(self, font: wx.Font, col: wx.Colour):
-        gc_font = self.gc.CreateFont(font, col)
-        font.color = col
-        self.font_trace_map[id(gc_font)] = font
-        return gc_font
+    def SetFont(self, font: wx.Font, col: wx.Colour | None = None):
+        if not isinstance(font, wx.Font):
+            raise NotImplementedError("The font to be set must be wx.Font")
+        self.current_font = font
+        if col is not None:
+            self.current_font_color = col
+        self.gc.SetFont(self.CreateFont(font))
 
-    def SetFont(self, font: wx.GraphicsFont):
-        if id(font) in self.font_trace_map:
-            self.current_font = self.font_trace_map[id(font)]
+    def ensure_font(self):
+        if self.current_font is None:
+            raise ValueError("Font not defined yet")
+
+    def DrawText(self, string: str | AdvancedText, x: float, y: float, color: wx.Colour | None = None,
+                 center_align: Union[CenterAlign, str] = "topleft", attr: TextAttr | None = None):
+        """
+        绘制文字，后端为cairo+pango
+        :param string 绘制的文字
+        :param x 绘制x坐标
+        :param y 绘制y坐标
+        :param color 绘制文字颜色
+        :param center_align 定义绘制坐标相对的文字的中心点
+        :param attr 文字属性，将与设置的字体合并
+        """
+        self.ensure_font()
+
+        # 统一转化为AdvancedText
+        if isinstance(string, str):
+            text = AdvancedText(text=string, global_attr=TextAttr.from_wx_font(self.current_font))
+            if attr is not None:
+                text.global_attr.merge(attr)
+        elif isinstance(string, AdvancedText):
+            text = string
+            if attr is not None:
+                text.global_attr.merge(attr)
         else:
-            self.current_font = None
-        self.gc.SetFont(font)
+            raise TypeError("Invalid text type")
 
-    def DrawText(self, string: str, x: float, y: float):
-        """通过PIL渲染文字实现绘制无黑边的完全透明度文字"""
-        if not self.enable_transparent_text:
-            self.gc.DrawText(string, x, y)
-            return
-        info = self.LoadTextRenderInfo(string, x, y)
+        # 渲染文本
+        color = self.current_font_color if color is None else color
+        text_bitmap = TextRender.render(self, text, self.current_font, color)
 
-        if t_info := TheTextCacheManager.get_cache(info):  # 使用已渲染缓存
-            bitmap, size = t_info.text_bitmap, t_info.size
-            offset_pos = (int(x), int(y))
-        else:  # 新增字体渲染缓存
-            wx_font = self.current_font if self.current_font else self.window.GetFont()
-            bitmap, size = GCRender.RenderTransparentText(self, info, wx_font, self.is_dark)  # 增加渲染颜色
-            info.size = size
-            info.text_bitmap = bitmap
-            TheTextCacheManager.add_cache(info)
-            offset_pos = info.offset_pos
+        # 计算坐标偏移
+        center_align = CenterAlign.format(center_align)
+        w, h = text_bitmap.size
+        if CenterAlign.TOP in center_align:
+            y_off = 0
+        elif CenterAlign.BOTTOM in center_align:
+            y_off = h
+        else:
+            y_off = h // 2
+        if CenterAlign.LEFT in center_align:
+            x_off = 0
+        elif CenterAlign.RIGHT in center_align:
+            x_off = w
+        else:
+            x_off = w // 2
 
-        self.gc.DrawBitmap(bitmap, *offset_pos, size[0], size[1])
+        self.gc.DrawBitmap(text_bitmap.bitmap, int(x - x_off), int(y - y_off), w, h)
         # print(len(TheTextCacheManager.rendered_text_cache))
 
-    def GetFullTextExtent(self, text: str) -> tuple | tuple[float, float, float, float]:
+    def GetFullTextExtent(self, string: str | AdvancedText, attr: TextAttr | None = None) -> tuple[float, float, float, float]:
         if not self.enable_transparent_text:
-            return typing.cast(tuple[float, float, float, float], self.gc.GetFullTextExtent(text))
-        image = Image.new("RGBA", (0, 0))
-        draw = ImageDraw.Draw(image)
-        wx_font = self.current_font if self.current_font else self.window.GetFont()
-        font = GCRender.GetFontByHandle(wx_font)
-        spacing = GCRender.SPACING
-        left, top, right, bottom = draw.multiline_textbbox((0, 0), text, font, spacing=spacing)
-        OFFSET = GCRender.OFFSET
-        return right - left, bottom - top + OFFSET * 2, left, top - OFFSET
-
-    def LoadTextRenderInfo(self, string: str, x: float, y: float):
-        wx_font = self.current_font if self.current_font else self.window.GetFont()
-        color = wx_font.color.Get(True) if hasattr(wx_font, "color") else self.window.GetForegroundColour().Get(True)
-        pos_decimal = (x - int(x), y - int(y))
-        return TextRenderCache(string, color, wx_font.NativeFontInfoDesc, pos_decimal, offset_pos=(int(x), int(y)))
+            return typing.cast(tuple[float, float, float, float], self.gc.GetFullTextExtent(string))
+        if isinstance(string, str):
+            text = AdvancedText(text=string, global_attr=attr)
+        elif isinstance(string, AdvancedText):
+            text = string
+        logical_rect, ink_rect = TextRender.get_text_bbox(text)
+        return ink_rect.width / 1024, ink_rect.height / 1024, ink_rect.x / 1024, ink_rect.y / 1024#right - left, bottom - top + OFFSET * 2, left, top - OFFSET
 
     def DrawInnerRoundedRect(self, x: float, y: float, w: float, h: float, radius: float, border_width: float):
         """在指定的矩形内部绘制一个矩形"""
@@ -293,46 +315,6 @@ class GCRender:
         # fixme: 更多的属性设置
         GCRender.FONT_CVT_CACHE[cache_key] = font
         return font
-
-    @staticmethod
-    def RenderTransparentText(gc: CustomGraphicsContext, info: TextRenderCache, wx_font: wx.Font,
-                              text_enchant: bool = True, enchant_factor: float = 0.25) -> \
-            tuple[wx.GraphicsBitmap, tuple[int, int]]:
-        """渲染一个透明度文字"""
-        window = gc.GetWindow()
-        font = GCRender.GetFontByHandle(wx_font)
-
-        # 获取文字大小
-        SPACING = GCRender.SPACING
-        OFFSET = GCRender.OFFSET
-
-        sm_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-        left, top, right, bottom = sm_draw.textbbox((0, 0),
-                                                    info.text, font=font, spacing=SPACING)
-        if left == top == right == bottom == 0:
-            return gc.CreateBitmapFromImage(wx.Image(1, 1)), (1, 1)
-
-        # 绘制文字
-        delta_x, delta_y = round(info.pos_decimal[0]), round(info.pos_decimal[1])
-        image = Image.new("RGBA", (ceil(right - left) + delta_x, ceil(bottom - top + OFFSET * 2) + delta_y))
-        draw = ImageDraw.Draw(image)
-        color = wx_font.color.Get(True) if hasattr(wx_font, "color") else window.GetForegroundColour().Get(True)
-        color = color[:3]
-        draw.text((int(info.pos_decimal[0] - left), int(info.pos_decimal[1] - top + OFFSET)),
-                  info.text, fill=color, font=font, spacing=SPACING)
-
-        # 增强文字遮罩
-        if text_enchant:
-            alpha = image.getchannel("A")  # 获取文字遮罩
-            alpha = ImageEnhance.Brightness(alpha).enhance(1 + enchant_factor)  # 增加亮度
-            image.putalpha(alpha)  # 应用增强后的透明度
-
-        # 转化并返回
-        wx_image = PilImg2WxImg(image)
-        return (
-            gc.CreateBitmapFromImage(wx_image),
-            image.size
-        )
 
     @staticmethod
     def RenderInnerRoundedRect(gc: wx.GraphicsContext, border_width: float, corner_radius: float,

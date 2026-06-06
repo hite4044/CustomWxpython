@@ -73,6 +73,8 @@ class Frame(cwx.Frame):
         # sizer.Add(cwx.CheckBox(self, "我是谁？", style=wx.CHK_CHECKED | wx.ALIGN_RIGHT), 1, wx.EXPAND)
         sizer.Add(cwx.ToggleSwitch(self, label="Toggle Switch"), 0)
 
+        sizer.Add(cwx.CheckBox(self, "just check it!"), 0)
+
         self.SetSizer(sizer)
 
         # light_style = self.gen_style.copy()

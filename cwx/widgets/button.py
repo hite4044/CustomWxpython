@@ -8,9 +8,10 @@ import wx
 
 from .animation_widget import AnimationWidget
 from .base_widget import MaskState
+from ..animation.state_color_wrap import StateAnimManager
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
-from ..lib.adv_anim import StateGradientAnimation
+from ..animation.adv_anim import StateGradientAnimation
 from ..render import CustomGraphicsContext
 from ..style import Style, BtnStyle, HyperlinkBtnStyle
 
@@ -23,13 +24,14 @@ class ButtonEvent(SimpleCommandEvent):
 
 
 # class AutoBaseColorWrapper
-class ButtonBase(AnimationWidget):
+class ButtonBase(AnimationWidget, StateAnimManager):
     style: BtnStyle
     bg_anim: StateGradientAnimation
     border_anim: StateGradientAnimation
 
     def __init__(self, parent: wx.Window, widget_style: BtnStyle = None):
         """按钮基类"""
+        StateAnimManager.__init__(self, "mask_state")
         super().__init__(parent, widget_style=widget_style, fps=60)
         self.mask_state = MaskState.NONE
         self.crt_bg = wx.Colour(self.style.bg)
@@ -43,15 +45,11 @@ class ButtonBase(AnimationWidget):
 
         self.bg_anim = StateGradientAnimation(0.1, self.style.bg)
         self.border_anim = StateGradientAnimation(0.1, self.style.border)
-        self.reg_animation("bg", self.bg_anim)
-        self.reg_animation("border", self.border_anim)
+        self.reg_state_animation("bg", "crt_bg", self.bg_anim)
+        self.reg_state_animation("border", "crt_border", self.border_anim)
 
     def animation_callback(self):
-        if self.bg_anim.is_playing:
-            self.crt_bg = self.bg_anim.value
-        if self.border_anim.is_playing:
-            self.crt_border = self.border_anim.value
-
+        self.own_animation_callback()
         self.Refresh()
 
     def on_mouse_events(self, event: wx.MouseEvent):
@@ -59,24 +57,18 @@ class ButtonBase(AnimationWidget):
         if event.Entering():
             if event.LeftIsDown():
                 self.mask_state = MaskState.PRESSED
-                self.bg_anim.set_target(self.mask_state)
             else:
                 self.mask_state = MaskState.HOVER
-                self.bg_anim.set_target(self.mask_state)
         elif event.Leaving():
             self.mask_state = MaskState.NONE
-            self.bg_anim.set_target(self.mask_state)
         elif event.LeftDown():
             self.mask_state = MaskState.PRESSED
-            self.bg_anim.set_target(self.mask_state)
             self.on_button()
             self.ProcessEvent(ButtonEvent(self))
         elif event.LeftUp():
             self.mask_state = MaskState.HOVER
-            self.bg_anim.set_target(self.mask_state)
         else:
             return
-        self.play_animation("bg")
         self.Refresh()
 
     def on_button(self):
@@ -142,7 +134,7 @@ class Button(ButtonBase):
     def get_content_size(self) -> tuple[float, float]:
         """获取按钮里内容的大小"""
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
-        gc.SetFont(gc.CreateFont(self.GetFont(), self.style.fg))
+        gc.SetFont(self.GetFont(), self.style.fg)
         return gc.GetFullTextExtent(self.GetLabel())[:2]
 
     def SetLabel(self, label: str):
@@ -158,7 +150,7 @@ class Button(ButtonBase):
                           MaskState.HOVER: self.style.fg.normal,
                           MaskState.PRESSED: self.style.fg.pressed}[self.mask_state]
 
-        gc.SetFont(gc.CreateFont(self.GetFont(), text_color))
+        gc.SetFont(self.GetFont(), text_color)
         label = self.GetLabel()
         t_w, t_h, t_x, t_y = type_cast(tuple[int, int, int, int], gc.GetFullTextExtent(label))
         gc.DrawText(label, int((w - t_w) / 2), int((h - t_h) / 2))

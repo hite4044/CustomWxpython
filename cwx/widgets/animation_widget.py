@@ -26,7 +26,7 @@ class AnimationWidget(Widget):
     1. Rewrite method `animation_callback`, this method will call in each animation frame.
     """
 
-    def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 60):
+    def __init__(self, parent: wx.Window, style=0, widget_style: WidgetStyle = None, fps: int = 120):
         super().__init__(parent, style, widget_style)
         self.fps = fps
         self.allow_multi_anim: bool = True

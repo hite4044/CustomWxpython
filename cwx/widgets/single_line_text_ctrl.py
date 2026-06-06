@@ -277,8 +277,7 @@ class TextCtrl(AnimationWidget):
 
     def draw_content(self, gc: CustomGraphicsContext):
         w, h = type_cast(tuple[int, int], self.GetSize())
-        font = gc.CreateFont(self.GetFont(), self.text_color)
-        gc.SetFont(font)
+        gc.SetFont(self.GetFont(), self.text_color)
         if not self.box_extent:
             self.box_extent = t_w, t_h, t_x, t_y = type_cast(tuple[int, int, int, int], gc.GetFullTextExtent(self.text))
         else:

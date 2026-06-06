@@ -27,14 +27,14 @@ class StaticText(Widget):
     def RecalculateSize(self):
         label = self.GetLabel()
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
-        gc.SetFont(gc.CreateFont(self.GetFont(), wx.BLACK))
+        gc.SetFont(self.GetFont(), wx.BLACK)
         width, height, _, _ = type_cast(tuple, gc.GetFullTextExtent(label))
         size = (ceil(width), ceil(height))
         self.RawSetSize(size)
         self.RawSetMinSize(size)
 
     def draw_content(self, gc: CustomGraphicsContext):
-        gc.SetFont(gc.CreateFont(self.GetFont(), col=self.style.fg))
+        gc.SetFont(self.GetFont(), self.style.fg)
         #timer = Counter(create_start=True)
         gc.DrawText(self.GetLabel(), 0, 0)
         #print(timer.endT())
