@@ -314,7 +314,7 @@ class TextCtrlStyle(WidgetStyle):
 
         return TextCtrlStyle(
             input_fg=colors.input_fg,
-            input_bg=colors.input_bg,
+            input_bg=colors.control_fill.default,
             border=colors.border,
             active_tl_border=colors.primary,
             active_br_border=colors.primary,
@@ -358,7 +358,7 @@ class ProgressBarStyle(WidgetStyle):
     @staticmethod
     def load(style: Style) -> 'ProgressBarStyle':
         return ProgressBarStyle(
-            bg=ColorTransformer.with_alpha(style.colors.bg, 40),
+            bg=style.colors.control_fill.default,
             bar=GradientBrush(CT.dark1(style.colors.primary), CT.light1(style.colors.primary)),
             border=GradientPen(style.colors.border, width=1),
             corner_radius=5,
