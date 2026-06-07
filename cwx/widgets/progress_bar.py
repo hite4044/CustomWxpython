@@ -57,7 +57,7 @@ class ProgressBar(AnimationWidget):
         br = self.style.bar.create_brush(gc, (w if self.style.full_gradient else target_x, h))
         gc.SetBrush(br)
         if target_x <= self.style.corner_radius * 2:
-            radius = self.style.corner_radius
+            radius = self.style.corner_radius * SCALE
             path = gc.CreatePath()
             fix_percent = max(0.0, math.cos((target_x + border_width) / radius))  # 由小渐快大
             path.AddArc(target_x - radius / 2, h - (radius + border_width),
@@ -72,7 +72,7 @@ class ProgressBar(AnimationWidget):
         else:
             gc.DrawRoundedRectangle(border_width, border_width,
                                     target_x, h - border_width * 2,
-                                    self.style.corner_radius)
+                                    self.style.corner_radius * SCALE)
 
     def update_animation(self):
         self.value_anim.set_range(self.value_anim.value, self.value / self.range)

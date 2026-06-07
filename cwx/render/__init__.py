@@ -2,108 +2,18 @@ import ctypes
 import math
 import typing
 from ctypes import wintypes
-from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from math import ceil
 from typing import Union
 
 import wx
-from PIL import ImageFont, Image, ImageDraw, ImageEnhance
+from PIL import ImageFont
 from win32.lib.win32con import GDI_ERROR
 from win32gui import CreateCompatibleDC, SelectObject, DeleteDC
 
 from cwx.dpi import SCALE
 from cwx.render.constants import CenterAlign
-from cwx.render.text import TextAttr, TextParagraph, AdvancedText, TextRender
-from cwx.tool.image_pil2wx import PilImg2WxImg
-
-
-@dataclass
-class TextRenderCache:
-    text: str  # 文字
-    color: tuple[int, int, int, int]  # 颜色
-    font: str  # 字体信息NativeFontInfoDesc
-    pos_decimal: tuple[float, float]  # 文字位置的小数
-
-    text_bitmap: wx.GraphicsBitmap = None  # 文字渲染结果
-    size: tuple[int, int] = None  # 文字图片的大小
-    offset_pos: tuple[int, int] = None
-
-    def __hash__(self):
-        return hash(hash(self.text) + hash(self.color) + hash(self.font) + hash(self.pos_decimal))
-
-    def __eq__(self, other):
-        if not isinstance(other, TextRenderCache):
-            return False
-        return hash(self) == hash(other)
-
-
-class TextCacheManager:
-    def __init__(self):
-        self.text_cache_cnt = 0
-        self.max_text_cache_cnt = 1000
-        self.rendered_text_cnt: dict[TextRenderCache, int] = {}
-        self.rendered_text_cache: dict[TextRenderCache, TextRenderCache] = {}
-        self.clear_timer: wx.Timer | None = None
-
-        # 挂钩get_cache函数从而自动启动清理缓存计时器
-        raw_get_cache = self.get_cache
-
-        def get_cache_hook(req_info: TextRenderCache):
-            ret = raw_get_cache(req_info)
-            if not self.clear_timer:
-                app = wx.GetApp()
-                self.clear_timer = wx.Timer(app)
-                app.Bind(wx.EVT_TIMER, self.clear_unused_cache, self.clear_timer)
-                self.clear_timer.Start(1000 * 60)  # 60秒清理一次缓存
-                setattr(self, "get_cache", raw_get_cache)
-            return ret
-
-        setattr(self, "get_cache", get_cache_hook)
-
-    def get_cache(self, req_info: TextRenderCache):
-        """尝试获取文字渲染缓存"""
-        if req_info in self.rendered_text_cache:
-            self.rendered_text_cnt[req_info] += 1
-            return self.rendered_text_cache[req_info]
-        return None
-
-    def add_cache(self, info: TextRenderCache):
-        """增加文字渲染缓存"""
-        if info not in self.rendered_text_cache:
-            self.text_cache_cnt += 1
-        self.rendered_text_cache[info] = info
-        self.rendered_text_cnt[info] = 1
-
-    def remove_cache(self, info: TextRenderCache):
-        """删除文字渲染缓存"""
-        self.text_cache_cnt -= 1
-        del self.rendered_text_cnt[info]
-        return self.rendered_text_cache.pop(info)
-
-    def clear_unused_cache(self, *_):
-        """清除不常使用的文字渲染缓存, 直到缓存数量小于最大缓存大小的0.8倍"""
-        if self.text_cache_cnt < self.max_text_cache_cnt:
-            return
-        clear_target = self.max_text_cache_cnt * 0.8
-
-        cnt_dict: dict[int, list[TextRenderCache]] = {}
-        for info, cnt in self.rendered_text_cnt.items():
-            if cnt not in cnt_dict:
-                cnt_dict[cnt] = [info]
-            else:
-                cnt_dict[cnt].append(info)
-        cnt_list = list(cnt_dict.items())
-        cnt_list.sort(key=lambda x: x[0])
-        for cnt, info_list in cnt_list:
-            for info in info_list:
-                self.remove_cache(info)
-                if self.text_cache_cnt < clear_target:
-                    return
-
-
-TheTextCacheManager = TextCacheManager()
+from cwx.render.text_render import TextAttr, TextParagraph, AdvancedText, TextRender
 
 
 class JumpSubClassCheck:
@@ -179,6 +89,8 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         except AttributeError:
             return getattr(self.gc, name)
 
+    # region FontRender
+
     def SetFont(self, font: wx.Font, col: wx.Colour | None = None):
         if not isinstance(font, wx.Font):
             raise NotImplementedError("The font to be set must be wx.Font")
@@ -190,6 +102,17 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
     def ensure_font(self):
         if self.current_font is None:
             raise ValueError("Font not defined yet")
+
+    def ConvertText(self, string: str | AdvancedText, attr: TextAttr | None = None):
+        if isinstance(string, str):
+            text = AdvancedText(text=string, global_attr=TextAttr.from_wx_font(self.current_font))
+        elif isinstance(string, AdvancedText):
+            text = string
+        else:
+            raise TypeError("Invalid text type")
+        if attr is not None:
+            text.global_attr.merge(attr)
+        return text
 
     def DrawText(self, string: str | AdvancedText, x: float, y: float, color: wx.Colour | None = None,
                  center_align: Union[CenterAlign, str] = "topleft", attr: TextAttr | None = None):
@@ -205,20 +128,11 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.ensure_font()
 
         # 统一转化为AdvancedText
-        if isinstance(string, str):
-            text = AdvancedText(text=string, global_attr=TextAttr.from_wx_font(self.current_font))
-            if attr is not None:
-                text.global_attr.merge(attr)
-        elif isinstance(string, AdvancedText):
-            text = string
-            if attr is not None:
-                text.global_attr.merge(attr)
-        else:
-            raise TypeError("Invalid text type")
+        text = self.ConvertText(string, attr)
 
         # 渲染文本
         color = self.current_font_color if color is None else color
-        text_bitmap = TextRender.render(self, text, self.current_font, color)
+        text_bitmap = TextRender.render(self, text, color, SCALE)
 
         # 计算坐标偏移
         center_align = CenterAlign.format(center_align)
@@ -239,15 +153,24 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
         self.gc.DrawBitmap(text_bitmap.bitmap, int(x - x_off), int(y - y_off), w, h)
         # print(len(TheTextCacheManager.rendered_text_cache))
 
-    def GetFullTextExtent(self, string: str | AdvancedText, attr: TextAttr | None = None) -> tuple[float, float, float, float]:
-        if not self.enable_transparent_text:
-            return typing.cast(tuple[float, float, float, float], self.gc.GetFullTextExtent(string))
-        if isinstance(string, str):
-            text = AdvancedText(text=string, global_attr=attr)
-        elif isinstance(string, AdvancedText):
-            text = string
+    def GetFullTextExtent(self, string: str | AdvancedText, attr: TextAttr | None = None) -> tuple[
+        float, float, float, float]:
+        """获取文字的边缘框, 格式为(width, height, x, y)"""
+        text = self.ConvertText(string, attr)
         logical_rect, ink_rect = TextRender.get_text_bbox(text)
-        return ink_rect.width / 1024, ink_rect.height / 1024, ink_rect.x / 1024, ink_rect.y / 1024#right - left, bottom - top + OFFSET * 2, left, top - OFFSET
+        return ink_rect.width * SCALE, ink_rect.height * SCALE, ink_rect.x * SCALE, ink_rect.y * SCALE
+
+    def GetTextExtent(self, string: str | AdvancedText, attr: TextAttr | None = None):
+        """获取文字的边缘框, 宽度和高度"""
+        w, h, x, y = self.GetFullTextExtent(string, attr)
+        return w, h
+
+    def GetPartialTextExtents(self, string: str | AdvancedText, attr: TextAttr | None = None):
+        """获取每个字符的渲染x坐标列表"""
+        text = self.ConvertText(string, attr)
+        return list(map(lambda x: x * SCALE, TextRender.get_partial_text_extents(text)))
+
+    # endregion
 
     def DrawInnerRoundedRect(self, x: float, y: float, w: float, h: float, radius: float, border_width: float):
         """在指定的矩形内部绘制一个矩形"""

@@ -2,7 +2,7 @@ import wx
 
 from .animation_widget import AnimationWidget
 from ..animation import MultiColorGradientAnimation, KeyFrameAnimation, MAKE_ANIMATION, KeyFrameCurves
-from ..dpi import SCALE
+from ..dpi import SCALE, translate_size
 from ..render import CustomGraphicsContext
 from ..style import WidgetStyle, ToggleSwitchStyle, Style
 
@@ -23,7 +23,7 @@ class ToggleSwitch(AnimationWidget):
     bg_anim: OwnMultiColorAnimation
     sym_anim: KeyFrameAnimation
 
-    LABEL_PAD = 10
+    LABEL_PAD = 8 * SCALE
 
     def __init__(self, parent: wx.Window, label: str = "", style: int = TS_OFF,
                  widget_style: WidgetStyle | None = None):
@@ -37,7 +37,7 @@ class ToggleSwitch(AnimationWidget):
         self.update_bg_fix = lambda: setattr(self.bg_anim, "start_fix", "on" if self.is_on else "off")
         self.crt_bg = wx.Colour(self.style.bg.normal)
         self.crt_border = wx.Colour(self.style.border.normal)
-        self.sym_pos = (30, 10) if self.is_on else (10, 30)
+        self.sym_pos = translate_size((30, 10)) if self.is_on else translate_size((10, 30))
         self.text_extent = (1.0, 1.0, 1.0, 1.0)
         self.SetLabel(label)
 
@@ -95,7 +95,7 @@ class ToggleSwitch(AnimationWidget):
             self.sym_anim.set_invent(False)
             if self.sym_anim.percent_offset != 0:
                 self.sym_anim.percent_offset = 1 - self.sym_anim.percent_offset
-            self.sym_pos = (10, 30) if self.is_on else (30, 10)
+            self.sym_pos = translate_size((10, 30)) if self.is_on else translate_size((30, 10))
         self.bg_anim.set_target("")
         self.play_animation("sym")
         self.play_animation("bg")
@@ -129,14 +129,14 @@ class ToggleSwitch(AnimationWidget):
     def draw_content(self, gc: CustomGraphicsContext):
         self.draw_switch(gc)  # 绘制背景
         with gc.State:
-            gc.Translate((40 + self.LABEL_PAD) * SCALE, 0)
+            gc.Translate((40 * SCALE + self.LABEL_PAD), 0)
             self.draw_label_content(gc)  # 绘制内容
 
     def draw_switch(self, gc: CustomGraphicsContext):
         """绘制开关及其背景"""
         w, h = self.GetTupClientSize()
         with gc.State:
-            gc.Translate(0, int(h / 2 - 10))
+            gc.Translate(4 * SCALE, int(h / 2 - 10 * SCALE))
             # 绘制背景
             gc.SetBrush(gc.CreateBrush(wx.Brush(self.crt_bg)))
             if self.is_on:
@@ -164,7 +164,8 @@ class ToggleSwitch(AnimationWidget):
         size = (int((40 + self.LABEL_PAD) * SCALE + self.text_extent[0]), int(max(30 * SCALE, self.text_extent[1])))
         self.RawSetMinSize(size)
         self.RawCacheBestSize(size)
-        self.RawSetSize(size)
+        if self.init_wnd:
+            self.RawSetSize(size)
 
     def refresh_extent(self, gc: CustomGraphicsContext):
         self.text_extent = gc.GetFullTextExtent(self.GetLabel())

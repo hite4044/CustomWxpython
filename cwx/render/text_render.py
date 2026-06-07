@@ -1,11 +1,13 @@
+from collections import namedtuple
 from dataclasses import dataclass
 from io import BytesIO
 from math import ceil
-from typing import Union
+from typing import Union, TypeAlias
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageDraw
 
 from cwx.lib.perf import Counter
+from cwx.tool.image_pil2wx import PilImg2WxImg
 
 timer = Counter()
 timer.start()
@@ -17,6 +19,8 @@ from pangocffi import WrapMode, Rectangle
 print(timer.endT())
 
 from cwx.render.constants import *
+
+P_SCALE = 1024
 
 
 @dataclass
@@ -64,7 +68,6 @@ class TextAttr:
         value_dict = self.__dict__.copy()
         value_dict.pop("strike_color")
         return hash(str(value_dict) + str(self.strike_color.Get()))
-
 
 
 """Reserved for internal use. You shouldn't modify it."""
@@ -128,19 +131,25 @@ class TextBitmap:
     ink_rect: Rectangle
 
 
+"""A rect with a format of (x, y, width, height)"""
+SimpleRect = namedtuple("SimpleRect", ["x", "y", "width", "height"])
+
+
 class TextRender:
+    """Text Render of CustomWxpython"""
     MAX_CACHE_SIZE = 1000
     FONT_CACHE: dict[int, TextBitmap] = {}
 
     enable_text_enhance = True
     enhance_factor = 0.25
 
-    @staticmethod
-    def get_text_bbox(text: AdvancedText) -> tuple[Rectangle, Rectangle]:
-        # 获取文本大小
-        bbox_surface = cairocffi.ImageSurface(cairocffi.FORMAT_ARGB32, 1, 1)
-        context = cairocffi.Context(bbox_surface)
-
+    @classmethod
+    def create_layout_by_context(cls, context: cairocffi.Context, text: AdvancedText):
+        """
+        根据text定义的文字属性创建pangocairo布局
+        :param context: 用于创建布局的cairo上下文
+        :param text: 文字
+        """
         # 创建布局
         layout = pangocairocffi.create_layout(context)
         layout.wrap = getattr(WrapMode, text.warp.name)
@@ -148,12 +157,42 @@ class TextRender:
         layout.height = text.border[1] * 1024 if text.border else -1
         layout.alignment = getattr(pangocffi.Alignment, text.align.name)
         layout.apply_markup(text.as_html())
+        return layout
 
-        # 创建新的画布并更改目标画布
-        return layout.get_extents()
+    @classmethod
+    def create_test_layout(cls, text: AdvancedText):
+        """创建用于获取布局信息的pangocairo布局. 所有数据需要经过除以P_SCALE并乘以SCALE可得真实像素数"""
+        bbox_surface = cairocffi.ImageSurface(cairocffi.FORMAT_A8, 1, 1)
+        context = cairocffi.Context(bbox_surface)
 
-    @staticmethod
-    def render(gc: wx.GraphicsContext, text: AdvancedText, font: wx.Font, color: wx.Colour) -> TextBitmap:
+        return cls.create_layout_by_context(context, text)
+
+    @classmethod
+    def get_text_bbox(cls, text: AdvancedText) -> tuple[SimpleRect, SimpleRect]:
+        """获取文字的逻辑边界框与渲染边界框, 格式为(x, y, width, height). 未经过dpi换算"""
+        layout = cls.create_test_layout(text)
+
+        log_r, ink_r = layout.get_extents()
+        return (SimpleRect(log_r.x / P_SCALE, log_r.y / P_SCALE, log_r.width / P_SCALE, log_r.height / P_SCALE),
+                SimpleRect(ink_r.x / P_SCALE, ink_r.y / P_SCALE, ink_r.width / P_SCALE, ink_r.height / P_SCALE))
+
+    @classmethod
+    def get_partial_text_extents(cls, text: AdvancedText) -> list[float]:
+        """获取每个字符的渲染x"""
+        layout = cls.create_test_layout(text)
+        layout_iter = layout.get_iter()
+        result = []
+        while True:
+            result.append(layout_iter.get_char_extents().x / P_SCALE)
+            if not layout_iter.next_char():
+                break
+        result.append(layout_iter.get_char_extents().x / P_SCALE)
+        result.pop(0)
+        print(result)
+        return result
+
+    @classmethod
+    def render(cls, gc: wx.GraphicsContext, text: AdvancedText, color: wx.Colour, render_scale: float = 1) -> TextBitmap:
         # 测试缓存
         text_hash = hash(text) + hash(color.Get())
         if text_hash in TextRender.FONT_CACHE:
@@ -161,11 +200,12 @@ class TextRender:
 
         logical_rect, ink_rect = TextRender.get_text_bbox(text)
 
-        width = max(ceil(ink_rect.width / 1024), 1)
-        height = max(ceil(ink_rect.height / 1024), 1)
+        width = max(ceil(ink_rect.width * render_scale), 1)
+        height = max(ceil(ink_rect.height * render_scale), 1)
 
         canvas = cairocffi.ImageSurface(cairocffi.FORMAT_A8, width, height)
         context = cairocffi.Context(canvas)
+        context.transform(cairocffi.Matrix(render_scale, 0, 0, render_scale, 0, 0))
 
         # 设置文本颜色
         context.set_source_rgba(
@@ -174,33 +214,28 @@ class TextRender:
         )
 
         # 创建布局
-        layout = pangocairocffi.create_layout(context)
-        layout.wrap = getattr(WrapMode, text.warp.name)
-        layout.width = text.border[0] if text.border else -1
-        layout.height = text.border[1] if text.border else -1
-        layout.alignment = getattr(pangocffi.Alignment, text.align.name)
-        layout.apply_markup(text.as_html())
+        layout = cls.create_layout_by_context(context, text)
 
         # 渲染文字
         context.move_to(-ink_rect.x // 1024, -ink_rect.y // 1024)
         pangocairocffi.show_layout(context, layout)
         canvas.flush()
 
-        # 转换
+        # 提取并增强文字单色图
         timer = Counter().start()
         alpha_png = BytesIO()
         canvas.write_to_png(alpha_png)
         alpha_image = Image.open(alpha_png)
         if TextRender.enable_text_enhance:
             alpha_image = ImageEnhance.Brightness(alpha_image).enhance(1 + TextRender.enhance_factor)
-        alpha_buffer = alpha_image.tobytes()
 
-        wx_bitmap = wx.Image(width, height)
-        wx_bitmap.SetRGB(wx.Rect(0, 0, width, height), color.GetRed(), color.GetGreen(), color.GetBlue())
-        wx_bitmap.alpha_buffer = alpha_buffer
-        wx_bitmap.SetAlphaBuffer(wx_bitmap.alpha_buffer)
+        # 合成alpha图片
+        image = Image.new("RGBA", (width, height), (color.Red(), color.Green(), color.Blue(), 255))
+        image.putalpha(alpha_image)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((0, 0, width - 1, height - 1), None, outline=(255, 0, 0, 255))
 
-        graphics_bitmap = gc.CreateBitmap(wx_bitmap.ConvertToBitmap())
+        graphics_bitmap = gc.CreateBitmap(PilImg2WxImg(image).ConvertToBitmap())
         print(timer.endT())
         canvas.finish()
 

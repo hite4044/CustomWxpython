@@ -17,9 +17,11 @@ class Frame(cwx.Frame):
         CustomGraphicsContext.force_transparent_text = True
 
         style = cwx.Style(is_dark=True)
-        # style.frame_style.backdrop_type = cwx.BackdropType.MICA_ALT
-        # style.frame_style.bg = wx.Colour(44, 44, 44)
-        # style.frame_style.bg = wx.Colour(243, 243, 243)
+        # style.frame_style.accent_state = cwx.AccentState.COLORED_BLUR
+        # style.frame_style.accent_color = wx.Colour(255, 182, 52, 50)
+        style.frame_style.backdrop_type = cwx.BackdropType.ACRYLIC
+        #style.frame_style.bg = wx.Colour(44, 44, 44)
+        #style.frame_style.bg = wx.Colour(243, 243, 243)
 
         self.load_style(style)
 

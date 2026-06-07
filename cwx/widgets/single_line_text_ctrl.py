@@ -55,6 +55,7 @@ class TextCtrl(AnimationWidget):
         self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_event)
         self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
         self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
+        self.Bind(wx.EVT_KEY_UP, self.on_key_up)
 
     def SetFont(self, font: wx.Font):
         super().SetFont(font)
@@ -112,13 +113,23 @@ class TextCtrl(AnimationWidget):
 
     def load_text_extends(self, gc: wx.GraphicsContext = None):
         if not gc:
-            gc = wx.GraphicsContext.Create(self)
-            font = gc.CreateFont(self.GetFont(), self.text_color)
-            gc.SetFont(font)
+            gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
+            gc.SetFont(self.GetFont(), self.text_color)
+        print("Load")
         self.text_extents = gc.GetPartialTextExtents(self.text)
         self.text_extents.insert(0, 0)
 
+    # region Input Events
+
     def on_key(self, event: wx.KeyEvent):
+        def proc_shift():
+            if event.ShiftDown():
+                if not self.selecting:
+                    self.selecting = True
+                    self.select_start = self.cursor_char
+            else:
+                #self.selecting = False
+                self.select_start = None
         if event.ControlDown():
             if event.KeyCode == wx.WXK_CONTROL_C:
                 self.OnCopy()
@@ -129,23 +140,37 @@ class TextCtrl(AnimationWidget):
             elif event.KeyCode == wx.WXK_CONTROL_X:  # 新增Ctrl+X处理
                 self.OnCut()
                 return
+            elif event.KeyCode == wx.WXK_CONTROL_A:  # 新增Ctrl+A处理
+                self.select_start = 0
+                self.cursor_char = len(self.text)
+                self.update_cursor_pos_target()
+                return
         event.Skip()
         char = chr(event.UnicodeKey)
         if char.isprintable():
             # 处理字符输入
             if self.select_start is not None and self.select_start != self.cursor_char:
                 # 替换选中文本
+                cursor_char = min(self.cursor_char, self.select_start)
                 self.DeleteValue(self.select_start, self.cursor_char)
-                self.InsertValue(min(self.cursor_char, self.select_start), char)
+                #self.cursor_char = cursor_char
+                print(cursor_char)
+                self.InsertValue(cursor_char, char)
             else:
                 # 插入新字符
                 self.InsertValue(self.cursor_char, char)
-        elif event.KeyCode == wx.WXK_LEFT and self.cursor_char > 0:
-            self.cursor_char -= 1
-            self.select_start = None
-        elif event.KeyCode == wx.WXK_RIGHT and self.cursor_char < len(self.text):
-            self.cursor_char += 1
-            self.select_start = None
+        elif event.KeyCode == wx.WXK_LEFT:
+            if self.select_start is not None and not self.selecting: # 如果有选中的文本, 按左键跳到选中文本的左边
+                self.cursor_char = min(self.select_start, self.cursor_char)
+            proc_shift()
+            if self.cursor_char > 0:
+                self.cursor_char -= 1
+        elif event.KeyCode == wx.WXK_RIGHT:
+            if self.select_start is not None and not self.selecting: # 如果有选中的文本, 按右键跳到选中文本的右边
+                self.cursor_char = max(self.select_start, self.cursor_char)
+            proc_shift()
+            if self.cursor_char < len(self.text):
+                self.cursor_char += 1
         elif event.KeyCode == wx.WXK_BACK and self.cursor_char > 0:
             # 处理退格键
             if self.select_start is not None and self.select_start != self.cursor_char:
@@ -159,13 +184,42 @@ class TextCtrl(AnimationWidget):
             else:
                 self.DeleteValue(self.cursor_char, self.cursor_char + 1)
         elif event.KeyCode == wx.WXK_HOME:  # 新增Home键处理
+            proc_shift()
             self.cursor_char = 0
         elif event.KeyCode == wx.WXK_END:  # 新增End键处理
+            proc_shift()
             self.cursor_char = len(self.text)
         else:
             return
         self.update_cursor_pos_target()
         self.Refresh()
+
+    def on_key_up(self, event: wx.KeyEvent):
+        event.Skip()
+        if event.GetKeyCode() == wx.WXK_SHIFT and self.selecting:
+            self.selecting = False
+
+    def on_mouse_event(self, event: wx.MouseEvent):
+        event.Skip()
+        if event.LeftDown():
+            self.selecting = True
+            self.select_start = None
+            self.update_cursor_pos_target(self.get_cursor_pos_at_point(event.Position))
+            self.CaptureMouse()
+        elif event.Dragging() and self.selecting:
+            char_pos = self.get_cursor_pos_at_point(event.Position)
+            if self.cursor_char != char_pos and self.select_start is None:
+                self.select_start = self.cursor_char
+            self.update_cursor_pos_target(char_pos)
+        elif event.LeftUp() and self.selecting:
+            self.selecting = False
+            self.update_cursor_pos_target(self.get_cursor_pos_at_point(event.Position))
+            self.ReleaseMouse()
+        else:
+            return
+        self.Refresh()
+
+    # endregion
 
     def OnCopy(self):
         if self.select_start is not None and self.select_start != self.cursor_char:
@@ -230,26 +284,6 @@ class TextCtrl(AnimationWidget):
         self.ProcessEvent(TextEvent(self))
         self.Refresh()
 
-    def on_mouse_event(self, event: wx.MouseEvent):
-        event.Skip()
-        if event.LeftDown():
-            self.selecting = True
-            self.select_start = None
-            self.update_cursor_pos_target(self.get_cursor_pos_at_point(event.Position))
-            self.CaptureMouse()
-        elif event.Dragging() and self.selecting:
-            char_pos = self.get_cursor_pos_at_point(event.Position)
-            if self.cursor_char != char_pos and self.select_start is None:
-                self.select_start = self.cursor_char
-            self.update_cursor_pos_target(char_pos)
-        elif event.LeftUp() and self.selecting:
-            self.selecting = False
-            self.update_cursor_pos_target(self.get_cursor_pos_at_point(event.Position))
-            self.ReleaseMouse()
-        else:
-            return
-        self.Refresh()
-
     def get_cursor_pos_at_point(self, point: wx.Point) -> int:
         """获取指定坐标对应的字符位置"""
         if not self.text_extents:
@@ -265,13 +299,14 @@ class TextCtrl(AnimationWidget):
         return max(0, i)  # 确保不超过文本长度
 
     def calc_size(self):
-        dc = wx.ClientDC(self)
-        dc.SetFont(self.GetFont())
-        w, h = type_cast(tuple, dc.GetTextExtent(self.text))
+        gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
+        gc.SetFont(self.GetFont())
+        w, h = type_cast(tuple, gc.GetTextExtent(self.text))
         pad_x = int(TC_X_PAD * 2)
         pad_y = int(TC_Y_PAD * 2)
-        size = (w + pad_x, h + pad_y)
-        self.RawSetSize(size)
+        size = (int(w + pad_x), int(h + pad_y))
+        if self.init_wnd:
+            self.RawSetSize(size)
         self.RawSetMinSize(size)
         self.RawCacheBestSize(size)
 
