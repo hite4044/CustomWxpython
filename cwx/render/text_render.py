@@ -2,7 +2,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from io import BytesIO
 from math import ceil
-from typing import Union, TypeAlias
+from typing import Union
 
 from PIL import Image, ImageEnhance, ImageDraw
 
@@ -14,9 +14,9 @@ timer.start()
 import cairocffi
 import pangocffi
 import pangocairocffi
-from pangocffi import WrapMode, Rectangle
+from pangocffi import WrapMode
 
-print(timer.endT())
+print("渲染库初始化耗时", timer.endT())
 
 from cwx.render.constants import *
 
@@ -123,16 +123,16 @@ class AdvancedText:
         return hash(rst)
 
 
+"""A rect with a format of (x, y, width, height)"""
+SimpleRect = namedtuple("SimpleRect", ["x", "y", "width", "height"])
+
+
 @dataclass
 class TextBitmap:
     bitmap: wx.GraphicsBitmap
     size: tuple[int, int]
-    logical_rect: Rectangle
-    ink_rect: Rectangle
-
-
-"""A rect with a format of (x, y, width, height)"""
-SimpleRect = namedtuple("SimpleRect", ["x", "y", "width", "height"])
+    logical_rect: SimpleRect
+    ink_rect: SimpleRect
 
 
 class TextRender:
@@ -188,11 +188,11 @@ class TextRender:
                 break
         result.append(layout_iter.get_char_extents().x / P_SCALE)
         result.pop(0)
-        print(result)
         return result
 
     @classmethod
-    def render(cls, gc: wx.GraphicsContext, text: AdvancedText, color: wx.Colour, render_scale: float = 1) -> TextBitmap:
+    def render(cls, gc: wx.GraphicsContext, text: AdvancedText, color: wx.Colour,
+               render_scale: float = 1) -> TextBitmap:
         # 测试缓存
         text_hash = hash(text) + hash(color.Get())
         if text_hash in TextRender.FONT_CACHE:
@@ -222,7 +222,7 @@ class TextRender:
         canvas.flush()
 
         # 提取并增强文字单色图
-        timer = Counter().start()
+        # timer = Counter().start()
         alpha_png = BytesIO()
         canvas.write_to_png(alpha_png)
         alpha_image = Image.open(alpha_png)
@@ -232,11 +232,11 @@ class TextRender:
         # 合成alpha图片
         image = Image.new("RGBA", (width, height), (color.Red(), color.Green(), color.Blue(), 255))
         image.putalpha(alpha_image)
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((0, 0, width - 1, height - 1), None, outline=(255, 0, 0, 255))
+        # draw = ImageDraw.Draw(image)
+        # draw.rectangle((0, 0, width - 1, height - 1), None, outline=(255, 0, 0, 255))
 
         graphics_bitmap = gc.CreateBitmap(PilImg2WxImg(image).ConvertToBitmap())
-        print(timer.endT())
+        # print(timer.endT())
         canvas.finish()
 
         # 缓存
