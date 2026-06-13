@@ -1,7 +1,7 @@
 import wx
 
-from .animation_widget import AnimationWidget
-from .base_widget import MaskState
+from .animation_widget import AnimationWrapper
+from .base_widget import MaskState, Widget
 from ..animation.adv_anim import StateGradientAnimation
 from ..animation.state_color_wrap import StateAnimManager
 from ..animation import KeyFrameCurves, MAKE_ANIMATION, ColorGradientAnimation
@@ -31,7 +31,7 @@ class CheckBoxEvent(SimpleCommandEvent):
         return self.state
 
 
-class CheckBox(AnimationWidget, StateAnimManager):
+class CheckBox(Widget, AnimationWrapper, StateAnimManager):
     WND_NAME = "check"
     style: CheckBoxStyle
     check_sym_am: DrawLinesAE
@@ -41,8 +41,9 @@ class CheckBox(AnimationWidget, StateAnimManager):
     PAD = 5 * SCALE
 
     def __init__(self, parent: wx.Window, label: str = "", style=0, widget_style: WidgetStyle = None):
+        super().__init__(parent, style, widget_style)
+        AnimationWrapper.__init__(self)
         StateAnimManager.__init__(self)
-        super().__init__(parent, style, widget_style, fps=60)
 
         self.current_state: wx.CheckBoxState = \
             parse_flag(style, wx.CHK_CHECKED, wx.CHK_UNDETERMINED, default=wx.CHK_UNCHECKED)

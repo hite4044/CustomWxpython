@@ -3,14 +3,15 @@ from typing import cast as type_cast
 
 import wx
 
-from .animation_widget import AnimationWidget
+from cwx.widgets.base_widget import Widget
+from .animation_widget import AnimationWrapper
 from ..animation import EZKeyFrameAnimation, KeyFrameCurves
 from ..dpi import SCALE
 from ..render import GCRender, ARC, CustomGraphicsContext
 from ..style import ProgressBarStyle, Style
 
 
-class ProgressBar(AnimationWidget):
+class ProgressBar(Widget, AnimationWrapper):
     style: ProgressBarStyle
     border_pen: wx.GraphicsPenInfo
     bg_brush: wx.Brush
@@ -19,7 +20,8 @@ class ProgressBar(AnimationWidget):
     # noinspection PyShadowingBuiltins
     def __init__(self, parent: wx.Window, style=0, widget_style: ProgressBarStyle = None,
                  range: float = 100, value: float = 0):
-        super().__init__(parent, style, widget_style, fps=60)
+        super().__init__(parent, style, widget_style)
+        AnimationWrapper.__init__(self)
         self.value = value
         self.range = range
         self.value_anim = EZKeyFrameAnimation(0.3, KeyFrameCurves.QUADRATIC_EASE, value / range, value / range)

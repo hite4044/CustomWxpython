@@ -196,7 +196,7 @@ class Widget(wx.Window):
         timer = Counter(create_start=True)
         gc = CustomGraphicsContext(wx.GraphicsContext.Create(dc))
         self.draw_content(gc)
-        # print(f"{self.__class__.__name__}: {timer.endT()}")
+        print(f"{self.__class__.__name__}: {timer.endT()}")
 
     def draw_content(self, gc: CustomGraphicsContext):
         pass
@@ -221,6 +221,7 @@ class TopWindowCanvas:
     def __init__(self, canvas_host: Widget):
         canvas_host.CWX_canvas = self
         self.canvas_host = canvas_host
+        self.enable_cache = True
 
         self.handled_windows: dict[int, Widget] = {}
         self.render_cache: dict[int, CanvasCache] = {}  # 窗口句柄 -> 渲染缓存
@@ -299,13 +300,23 @@ class TopWindowCanvas:
         for child in self.canvas_host.GetChildren():
             if isinstance(child, Widget):
                 self.draw_wnd(gc, self.canvas_host, child)
+        t = timer.end()
+        print("Each frame:", str(t)+"ms", ",fps:", round(1 / t, 2))
 
     def draw_wnd(self, gc: CustomGraphicsContext, root_window: wx.Window, window: Widget):
-        gc.GetWindow = lambda: root_window
         # 计算位置
         root_pos = self.pos_test_window.GetScreenPosition()
         wnd_pos, size = window.GetScreenPosition(), window.GetClientSize().Get()
         pos = (wnd_pos.x - root_pos.x, wnd_pos.y - root_pos.y)
+
+        # 如果未启用缓存
+        if not self.enable_cache:
+            gc.ResetClip()
+            gc.Clip(pos[0], pos[1], size[0], size[1])
+            window.draw_content(gc)
+            for child in window.GetChildren():
+                if isinstance(child, Widget) and not child.__class__.__name__ not in ["Frame", "Dialog"]:
+                    self.draw_wnd(gc, root_window, child)
 
         # 加载缓存
         if window.GetHandle() not in self.render_cache:
@@ -336,8 +347,7 @@ class TopWindowCanvas:
                 return
             image.SetAlphaBuffer(self.alpha_buffer)
             low_gc = wx.GraphicsContext.Create(image)
-            low_gc.GetWindow = lambda: root_window
-            wnd_gc = CustomGraphicsContext(low_gc)
+            wnd_gc = CustomGraphicsContext(low_gc, window)
             window.draw_content(wnd_gc)
             wnd_gc.Destroy()
             gc_bitmap = gc.CreateBitmapFromImage(image)
@@ -359,8 +369,7 @@ class TopWindowCanvas:
         wnd_gc = CustomGraphicsContext(low_gc)
         for child in window.GetChildren():
             if isinstance(child, Widget) and not child.__class__.__name__ not in ["Frame", "Dialog"]:
-                low_gc.GetWindow = lambda: child
-                wnd_gc.window = child
+                wnd_gc.init_from_window(child)
                 self.draw_wnd(wnd_gc, root_window, child)
         wnd_gc.Destroy()
         gc_bitmap = gc.CreateBitmapFromImage(image)

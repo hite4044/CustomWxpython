@@ -1,6 +1,7 @@
 import wx
 
-from .animation_widget import AnimationWidget
+from .animation_widget import AnimationWrapper
+from cwx.widgets.base_widget import Widget
 from ..animation import MultiColorGradientAnimation, KeyFrameAnimation, MAKE_ANIMATION, KeyFrameCurves
 from ..dpi import SCALE, translate_size
 from ..render import CustomGraphicsContext
@@ -10,7 +11,7 @@ TS_OFF = 0
 TS_ON = 1
 
 
-class ToggleSwitch(AnimationWidget):
+class ToggleSwitch(Widget, AnimationWrapper):
     class OwnMultiColorAnimation(MultiColorGradientAnimation):
         start_fix = "off"
 
@@ -28,6 +29,7 @@ class ToggleSwitch(AnimationWidget):
     def __init__(self, parent: wx.Window, label: str = "", style: int = TS_OFF,
                  widget_style: WidgetStyle | None = None):
         super().__init__(parent, widget_style=widget_style)
+        AnimationWrapper.__init__(self, fps=60)
         self.is_on: bool = bool(style & TS_ON)
 
         self.init_animation()
@@ -59,6 +61,7 @@ class ToggleSwitch(AnimationWidget):
 
         self.reg_animation("bg", self.bg_anim)
         self.reg_animation("sym", self.sym_anim)
+        self.handle_value("bg", "crt_bg")
 
     def on_key_down(self, event: wx.KeyEvent):
         event.Skip()
@@ -118,9 +121,7 @@ class ToggleSwitch(AnimationWidget):
             self.init_animation()
 
     def animation_callback(self):
-        if self.bg_anim.is_playing:
-            self.crt_bg = self.bg_anim.value
-        elif self.sym_anim.is_playing:
+        if self.sym_anim.is_playing:
             pass
         else:
             return

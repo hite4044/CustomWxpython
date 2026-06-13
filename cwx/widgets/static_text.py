@@ -10,6 +10,7 @@ from cwx.render import CustomGraphicsContext
 from cwx.style import WidgetStyle
 
 class StaticText(Widget):
+    """一段不可选中的文字"""
     style: WidgetStyle
 
     def __init__(self, parent: wx.Window, label: str, widget_style: WidgetStyle = None):

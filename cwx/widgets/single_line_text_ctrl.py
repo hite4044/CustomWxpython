@@ -5,7 +5,8 @@ import wx
 
 from cwx.widgets.text_ctrl import TextEvent
 
-from .animation_widget import AnimationWidget
+from cwx.widgets.base_widget import Widget
+from .animation_widget import AnimationWrapper
 from ..render import CustomGraphicsContext
 from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradientAnimation
 from ..dpi import SCALE
@@ -14,7 +15,7 @@ from ..style import Style, TextCtrlStyle
 TC_X_PAD = TC_Y_PAD = 6 * SCALE
 
 
-class TextCtrl(AnimationWidget):
+class TextCtrl(Widget, AnimationWrapper):
     style: TextCtrlStyle
     bg_brush: wx.Brush
     select_bg_brush: wx.Brush
@@ -25,7 +26,8 @@ class TextCtrl(AnimationWidget):
     active_border_pen: wx.GraphicsPenInfo
 
     def __init__(self, parent: wx.Window, text: str, widget_style: TextCtrlStyle = None):
-        super().__init__(parent, widget_style=widget_style, fps=60)
+        super().__init__(parent, widget_style=widget_style)
+        AnimationWrapper.__init__(self)
         self.text = text  # 文本
         self.cursor_char = 0  # 当前光标位置
         self.select_start: int | None = None  # 当前选择的文本的起始位置

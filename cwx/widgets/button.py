@@ -6,8 +6,8 @@ from typing import cast as type_cast
 
 import wx
 
-from .animation_widget import AnimationWidget
-from .base_widget import MaskState
+from .animation_widget import AnimationWrapper
+from .base_widget import MaskState, Widget
 from ..animation.state_color_wrap import StateAnimManager
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
@@ -24,15 +24,16 @@ class ButtonEvent(SimpleCommandEvent):
 
 
 # class AutoBaseColorWrapper
-class ButtonBase(AnimationWidget, StateAnimManager):
+class ButtonBase(Widget, AnimationWrapper, StateAnimManager):
     style: BtnStyle
     bg_anim: StateGradientAnimation
     border_anim: StateGradientAnimation
 
     def __init__(self, parent: wx.Window, widget_style: BtnStyle = None):
         """按钮基类"""
+        super().__init__(parent, widget_style=widget_style)
+        AnimationWrapper.__init__(self)
         StateAnimManager.__init__(self, "mask_state")
-        super().__init__(parent, widget_style=widget_style, fps=60)
         self.mask_state = MaskState.NONE
         self.crt_bg = wx.Colour(self.style.bg)
         self.crt_border = wx.Colour(self.style.border)

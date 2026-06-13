@@ -59,19 +59,21 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
 
     force_transparent_text = True
 
+    current_font: wx.Font
+    current_font_color: wx.Colour
+    is_dark: bool
+
     def __new__(cls, *args, **kwargs):
         if cls.TRANSPARENT_BRUSH is None:
             cls.TRANSPARENT_BRUSH = cls._FACTORY_GC.CreateBrush(wx.Brush(wx.BLACK, wx.BRUSHSTYLE_TRANSPARENT))
         return super().__new__(cls)
 
-    def __init__(self, gc: wx.GraphicsContext):
+    def __init__(self, gc: wx.GraphicsContext, window: wx.Window = None):
         object.__init__(self)
 
         self.gc = gc
-        self.window = gc.GetWindow()
-        self.current_font: wx.Font = self.window.GetFont()
-        self.current_font_color: wx.Colour = self.window.GetForegroundColour()
-        self.is_dark = getattr(self.window, "gen_style").is_dark if hasattr(self.window, "gen_style") else False
+        self.window = gc.GetWindow() if window is None else window
+        self.init_from_window(self.window)
 
         if self.force_transparent_text:
             self.enable_transparent_text = True
@@ -81,6 +83,11 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             self.enable_transparent_text = True
         else:
             self.enable_transparent_text = False
+
+    def init_from_window(self, window: wx.Window):
+        self.current_font: wx.Font = window.GetFont()
+        self.current_font_color: wx.Colour = window.GetForegroundColour()
+        self.is_dark = getattr(window, "gen_style").is_dark if hasattr(window, "gen_style") else False
 
     # 为日常调用提供重定向
     def __getattr__(self, name):
@@ -188,6 +195,9 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
     def DrawAnimationElement(self, element):
         """绘制一个动画元素"""
         element.draw(self)
+
+    def GetWindow(self):
+        raise NotImplementedError("")
 
 
 def get_offset(border_width: float):
