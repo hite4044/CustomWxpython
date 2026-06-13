@@ -22,11 +22,11 @@ class Style:
 
     def as_type(self, cls: type[WS_T]) -> WS_T | None:
         """指定要获取的样式类并尝试返回对应的样式类"""
-        return self.styles.get(cls.__name__)
+        return self.styles[cls.__name__]
 
     def as_type_str(self, name: str):
         """指定要获取的样式类并尝试返回对应的样式类"""
-        return self.styles.get(name)
+        return self.styles[name]
 
     frame_style: 'TopLevelStyle'
     btn_style: 'BtnStyle'

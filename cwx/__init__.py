@@ -15,6 +15,7 @@ __all__ = [
     "StaticText",
     "ProgressBar",
     "StaticBitmap",
+    "Slider",
 
     # Style
     "Style",
@@ -25,6 +26,7 @@ __all__ = [
     "EmptyStyle",
     "TextCtrlStyle",
     "ProgressBarStyle",
+    "SliderStyle",
 
     # Color
     "Colors",

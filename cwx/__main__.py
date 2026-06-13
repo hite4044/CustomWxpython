@@ -76,6 +76,7 @@ class Frame(cwx.Frame):
         sizer.Add(cwx.ToggleSwitch(self, label="Toggle Switch"), 0)
 
         sizer.Add(cwx.CheckBox(self, "just check it!"), 0)
+        sizer.Add(cwx.Slider(self), 0, wx.EXPAND)
 
         self.SetSizer(sizer)
 

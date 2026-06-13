@@ -185,6 +185,21 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
             self.Translate(x, y)
             GCRender.RenderInnerRoundedRect(self.gc, border_width, radius, w, h)
 
+    def DrawCircle(self, x: float, y: float, r: float):
+        """绘制一个圆形"""
+        with self.State:
+            path = self.CreatePath()
+            path.AddCircle(x, y, r)
+            self.gc.DrawPath(path)
+
+    TRANSPARENT_COLOR = wx.Colour(0, 0, 0, 0)
+
+    def EmptyPen(self):
+        self.SetPen(self.CreatePen(wx.GraphicsPenInfo(self.TRANSPARENT_COLOR, width=0)))
+
+    def EmptyBrush(self):
+        self.SetBrush(self.CreateBrush(wx.Brush(self.TRANSPARENT_COLOR)))
+
     @property
     def State(self):
         """

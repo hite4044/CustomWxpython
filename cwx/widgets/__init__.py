@@ -12,3 +12,4 @@ from .static_line import *
 from .static_text import *
 from .text_ctrl import *
 from .toggle_switch import *
+from .slider import *

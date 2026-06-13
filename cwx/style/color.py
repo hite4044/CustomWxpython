@@ -344,12 +344,35 @@ class Colors:
                 disabled=wx.Colour(121, 121, 121, alpha) if for_dark else wx.Colour(163, 163, 163, alpha)
             )
 
+    @dataclass
+    class NeutralStrong(StateColor):
+        default: wx.Colour
+        disabled: wx.Colour
+
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                default=wx.Colour(154, 154, 154) if for_dark else wx.Colour(134, 134, 134),
+                disabled=wx.Colour(87, 87, 87) if for_dark else wx.Colour(166, 166, 166)
+            )
+
+    @dataclass
+    class ControlSoild(StateColor):
+        KEY_MAP = {"default": "default"}
+        default: wx.Colour
+        @classmethod
+        def load(cls, for_dark: bool):
+            return cls(
+                default=wx.Colour(69, 69, 69) if for_dark else wx.Colour(255, 255, 255),
+            )
+
     def __init__(self,
                  is_dark: bool,
                  text: Text,
                  accent_text: AccentText,
                  control_fill: ControlFill,
                  control_strong: ControlStrong,
+                 neutral_strong: NeutralStrong,
                  accent_fill: AccentFill,
                  control_stroke: ControlStroke,
                  control_strong_stroke: ControlStrongStroke,
@@ -364,9 +387,12 @@ class Colors:
         self.accent_text = accent_text
         self.control_fill = control_fill
         self.control_strong = control_strong
+        self.neutral_strong = neutral_strong
         self.accent_fill = accent_fill
         self.control_stroke = control_stroke
         self.control_strong_stroke = control_strong_stroke
+
+        self.control_solid = Colors.ControlSoild.load(is_dark)
 
         self.primary = primary
         self.secondary = secondary
@@ -390,6 +416,7 @@ class Colors:
             accent_text=Colors.AccentText.load(for_dark),
             control_fill=Colors.ControlFill.load(for_dark),
             control_strong=Colors.ControlStrong.load(for_dark),
+            neutral_strong=Colors.NeutralStrong.load(for_dark),
             accent_fill=Colors.AccentFill.load(for_dark),
             control_stroke=Colors.ControlStroke.load(for_dark),
             control_strong_stroke=Colors.ControlStrongStroke.load(for_dark),
