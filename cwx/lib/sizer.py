@@ -1,5 +1,3 @@
-from inspect import stack
-
 import wx
 
 from ..dpi import SCALE

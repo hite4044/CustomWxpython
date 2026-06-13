@@ -1,7 +1,7 @@
-from .struct import *
 from ctypes import wintypes
 
 from cwx.style.frame.dwm import *
+from .struct import *
 
 
 def set_window_composition(hwnd: int, enable: bool = True,
@@ -40,6 +40,7 @@ def set_caption_color(hwnd: int, color: tuple[int, int, int] | None = None):
 
     color_ref = wintypes.RGB(*color)
     DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_CAPTION_COLOR, color_ref)
+
 
 def set_frame_dark(hwnd: int, is_dark: bool = True):
     DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.c_int(1 if is_dark else 0))

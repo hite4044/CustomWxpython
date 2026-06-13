@@ -3,16 +3,76 @@ from typing import cast as type_cast
 
 import wx
 
-from cwx.widgets.text_ctrl import TextEvent
-
 from cwx.widgets.base_widget import Widget
+from cwx.widgets.text_ctrl import TextEvent
 from .animation_widget import AnimationWrapper
-from ..render import CustomGraphicsContext
 from ..animation import KeyFrameCurves, EZKeyFrameAnimation, MAKE_ANIM_FRAMES, AnimationGroup, ColorGradientAnimation
 from ..dpi import SCALE
-from ..style import Style, TextCtrlStyle
+from ..render import CustomGraphicsContext
+from ..style import Style, WidgetStyle
 
-TC_X_PAD = TC_Y_PAD = 6 * SCALE
+
+class TextCtrlStyle(WidgetStyle):
+    def __init__(self,
+                 input_fg: wx.Colour,
+                 input_bg: wx.Colour,
+                 border: wx.Colour,
+                 active_tl_border: wx.Colour,
+                 active_br_border: wx.Colour,
+                 cursor: wx.Colour,
+                 select_fg: wx.Colour,
+                 select_bg: wx.Colour,
+
+                 corner_radius: float,
+                 select_corder_radius: float,
+                 border_width: float,
+                 active_border_width: float,
+                 border_style: int):
+        super().__init__(input_fg, input_bg)
+        self.border = border
+        self.active_tl_border = active_tl_border
+        self.active_br_border = active_br_border
+        self.cursor = cursor
+        self.select_fg = select_fg
+        self.select_bg = select_bg
+
+        self.corner_radius = corner_radius
+        self.select_corder_radius = select_corder_radius
+        self.border_width = border_width
+        self.active_border_width = active_border_width
+        self.border_style = border_style
+
+    @staticmethod
+    def load(style: Style) -> 'TextCtrlStyle':
+        colors = style.colors
+
+        return TextCtrlStyle(
+            input_fg=colors.input_fg,
+            input_bg=colors.control_fill.default,
+            border=colors.border,
+            active_tl_border=colors.primary,
+            active_br_border=colors.primary,
+            cursor=colors.input_fg,
+            select_fg=colors.input_fg,
+            select_bg=colors.primary,
+
+            corner_radius=4,
+            select_corder_radius=5,
+            border_width=1,
+            active_border_width=2,
+            border_style=wx.PENSTYLE_SOLID
+        )
+
+    @property
+    def 桃子(self) -> 'TextCtrlStyle':
+        self.active_tl_border = wx.Colour(0xfc, 0xcb, 0x90)
+        self.active_br_border = wx.Colour(0xd5, 0x7e, 0xeb)
+        return self
+
+
+Style.register_style_cls(TextCtrlStyle)
+
+TC_X_PAD = TC_Y_PAD = 4 * SCALE
 
 
 class TextCtrl(Widget, AnimationWrapper):
@@ -117,7 +177,7 @@ class TextCtrl(Widget, AnimationWrapper):
         if not gc:
             gc = CustomGraphicsContext(wx.GraphicsContext.Create(self))
             gc.SetFont(self.GetFont(), self.text_color)
-        print("Load")
+        # print("Load")
         self.text_extents = gc.GetPartialTextExtents(self.text)
         self.text_extents.insert(0, 0)
 
@@ -130,8 +190,9 @@ class TextCtrl(Widget, AnimationWrapper):
                     self.selecting = True
                     self.select_start = self.cursor_char
             else:
-                #self.selecting = False
+                # self.selecting = False
                 self.select_start = None
+
         if event.ControlDown():
             if event.KeyCode == wx.WXK_CONTROL_C:
                 self.OnCopy()
@@ -155,20 +216,20 @@ class TextCtrl(Widget, AnimationWrapper):
                 # 替换选中文本
                 cursor_char = min(self.cursor_char, self.select_start)
                 self.DeleteValue(self.select_start, self.cursor_char)
-                #self.cursor_char = cursor_char
+                # self.cursor_char = cursor_char
                 print(cursor_char)
                 self.InsertValue(cursor_char, char)
             else:
                 # 插入新字符
                 self.InsertValue(self.cursor_char, char)
         elif event.KeyCode == wx.WXK_LEFT:
-            if self.select_start is not None and not self.selecting: # 如果有选中的文本, 按左键跳到选中文本的左边
+            if self.select_start is not None and not self.selecting:  # 如果有选中的文本, 按左键跳到选中文本的左边
                 self.cursor_char = min(self.select_start, self.cursor_char)
             proc_shift()
             if self.cursor_char > 0:
                 self.cursor_char -= 1
         elif event.KeyCode == wx.WXK_RIGHT:
-            if self.select_start is not None and not self.selecting: # 如果有选中的文本, 按右键跳到选中文本的右边
+            if self.select_start is not None and not self.selecting:  # 如果有选中的文本, 按右键跳到选中文本的右边
                 self.cursor_char = max(self.select_start, self.cursor_char)
             proc_shift()
             if self.cursor_char < len(self.text):
@@ -223,6 +284,8 @@ class TextCtrl(Widget, AnimationWrapper):
 
     # endregion
 
+    # region Clipboard
+
     def OnCopy(self):
         if self.select_start is not None and self.select_start != self.cursor_char:
             start = min(self.select_start, self.cursor_char)
@@ -263,6 +326,10 @@ class TextCtrl(Widget, AnimationWrapper):
             self.update_cursor_pos_target()
             self.Refresh()
 
+    # endregion
+
+    # region TextControl
+
     def DeleteValue(self, from_pos: int, to_pos: int):
         """删除指定范围的内容"""
         from_pos, to_pos = min(from_pos, to_pos), max(from_pos, to_pos)
@@ -285,6 +352,8 @@ class TextCtrl(Widget, AnimationWrapper):
         self.load_text_extends()
         self.ProcessEvent(TextEvent(self))
         self.Refresh()
+
+    # endregion
 
     def get_cursor_pos_at_point(self, point: wx.Point) -> int:
         """获取指定坐标对应的字符位置"""

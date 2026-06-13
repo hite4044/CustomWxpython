@@ -4,7 +4,18 @@ import wx
 
 from .base_widget import Widget
 from ..render import CustomGraphicsContext
-from ..style import StaticLineStyle, Style
+from ..style import Style, WidgetStyle
+
+
+class StaticLineStyle(WidgetStyle):
+    @staticmethod
+    def load(style: Style) -> 'StaticLineStyle':
+        return StaticLineStyle(
+            bg=style.colors.border,
+        )
+
+
+Style.register_style_cls(StaticLineStyle)
 
 
 class StaticLine(Widget):

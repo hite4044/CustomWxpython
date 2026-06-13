@@ -4,8 +4,8 @@ from enum import auto, Enum
 class FrameTheme(Enum):
     """窗体绘制的主题, 会影响BackdropType的呈现颜色"""
     AUTO = auto()  # 根据系统主题自动选择
-    LIGHT = auto()   # 以亮色绘制
-    DARK = auto()   # 以暗色绘制
+    LIGHT = auto()  # 以亮色绘制
+    DARK = auto()  # 以暗色绘制
 
 
 class BackdropType(Enum):
@@ -25,7 +25,7 @@ class BackdropType(Enum):
 
 class AccentState(Enum):
     """窗口背景模糊状态, 会覆盖BackdropType, 窗口失焦时不会变为纯色"""
-    DONT_SET = -1   # 不设置, 使用此值将不会进行任何操作
+    DONT_SET = -1  # 不设置, 使用此值将不会进行任何操作
     DISABLE = 0  # 禁用
 
     COLORED = 1  # 纯色

@@ -2,9 +2,9 @@ import typing
 
 import wx
 
-from .base_widget import Widget
-from cwx.style import WidgetStyle
 from cwx.render import CustomGraphicsContext
+from cwx.style import WidgetStyle
+from .base_widget import Widget
 
 
 class StaticBitmap(Widget):

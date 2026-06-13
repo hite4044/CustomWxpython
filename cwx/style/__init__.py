@@ -1,14 +1,33 @@
-import wx
+from typing import TypeVar
 
-from cwx.lib.settings import GlobalSettings
 from cwx.style.frame.dwm import DWM_SYSTEMBACKDROP_TYPE, ACCENT_STATE
 from .color import *
 from .frame.struct import *
+
+WS_T = TypeVar('WS_T')
 
 
 class Style:
     """整个应用程序的样式, 包含了各种组件的组件样式"""
     default_style: 'WidgetStyle'
+
+    REGISTERED_STYLES: dict[str, type['WidgetStyle']] = {}
+
+    @classmethod
+    def register_style_cls(cls, style_cls: type['WidgetStyle']):
+        """注册一个样式类, 应当在WidgetStyle子类定义时调用"""
+        cls.REGISTERED_STYLES[style_cls.__name__] = style_cls
+
+    styles: dict[str, 'WidgetStyle'] = {}
+
+    def as_type(self, cls: type[WS_T]) -> WS_T | None:
+        """指定要获取的样式类并尝试返回对应的样式类"""
+        return self.styles.get(cls.__name__)
+
+    def as_type_str(self, name: str):
+        """指定要获取的样式类并尝试返回对应的样式类"""
+        return self.styles.get(name)
+
     frame_style: 'TopLevelStyle'
     btn_style: 'BtnStyle'
     textctrl_style: 'TextCtrlStyle'
@@ -24,15 +43,36 @@ class Style:
 
         self.load()
 
+    @property
+    def frame_style(self):
+        return self.as_type_str("TopLevelStyle")
+
+    @property
+    def btn_style(self):
+        return self.as_type_str("BtnStyle")
+
+    @property
+    def textctrl_style(self):
+        return self.as_type_str("TextCtrlStyle")
+
+    @property
+    def static_line_style(self):
+        return self.as_type_str("StaticLineStyle")
+
+    @property
+    def progress_bar_style(self):
+        return self.as_type_str("ProgressBarStyle")
+
+    @property
+    def toggle_switch_style(self):
+        return self.as_type_str("ToggleSwitchStyle")
+
     def load(self):
         """初始化各种组件主题"""
         self.default_style = EmptyStyle.load(self)
-        self.frame_style = TopLevelStyle.load(self)
-        self.btn_style = BtnStyle.load(self)
-        self.textctrl_style = TextCtrlStyle.load(self)
-        self.static_line_style = StaticLineStyle.load(self)
-        self.progress_bar_style = ProgressBarStyle.load(self)
-        self.toggle_switch_style = ToggleSwitchStyle.load(self)
+        for style_cls in self.REGISTERED_STYLES.values():
+            print(style_cls)
+            self.styles[style_cls.__name__] = style_cls.load(self)
 
     @staticmethod
     def sys_is_dark():
@@ -45,7 +85,7 @@ class Style:
         self.is_dark = False
 
         self.load()
-        self.frame_style.caption_theme = FrameTheme.LIGHT
+        # self.frame_style.caption_theme = FrameTheme.LIGHT
         return self
 
     def set_as_dark(self):
@@ -54,7 +94,7 @@ class Style:
         self.is_dark = True
 
         self.load()
-        self.frame_style.caption_theme = FrameTheme.DARK
+        # self.frame_style.caption_theme = FrameTheme.DARK
         return self
 
     def copy(self):
@@ -170,257 +210,3 @@ class WidgetStyle:
 
 class EmptyStyle(WidgetStyle):
     pass
-
-
-class TopLevelStyle(WidgetStyle):
-    bg: wx.Colour
-
-    def __init__(self, bg: Background,
-                 caption_theme: FrameTheme,
-                 backdrop_type: BackdropType,
-                 accent_type: AccentState,
-                 accent_color: wx.Colour | None = None):
-        super().__init__(bg=bg)
-        self.raw_bg = bg
-        self.is_default_bg = True
-        self.caption_theme = caption_theme
-        self.backdrop_type = backdrop_type
-
-        self.accent_state = accent_type
-        self.accent_color: wx.Colour | None = accent_color  # 颜色记得带透明度, CT.with_alpha
-        "颜色记得带透明度, CT.with_alpha"
-
-    @classmethod
-    def load(cls, style: Style) -> 'TopLevelStyle':
-        return cls(
-            bg=Background((wx.Colour(32, 32, 32) if style.is_dark else wx.Colour(243, 243, 243))),
-            caption_theme=GlobalSettings.default_caption_theme,
-            backdrop_type=GlobalSettings.default_backdrop_type,
-            accent_type=GlobalSettings.default_frame_accent,
-        )
-
-    @property
-    def bg(self):
-        return self.raw_bg
-
-    @bg.setter
-    def bg(self, value: wx.Colour):
-        self.raw_bg = value
-        self.is_default_bg = False
-
-
-@dataclass
-class BorderStyle:
-    color: TransformableColor
-    corner_radius: float
-    width: float
-    style: int
-
-    active_color: GradientColor
-
-
-class BtnStyle(WidgetStyle):
-    fg: Foreground
-    bg: Background
-    border: Border
-
-    def __init__(self,
-                 fg: Foreground,
-                 bg: Background,
-                 border: Border,
-                 corner_radius: float,
-                 border_width: float,
-                 border_style: int,
-                 ):
-        """
-        :param fg: 按钮文字
-        :param bg: 按钮背景
-        :param border: 按钮边框
-        :param corner_radius: 边框圆角半径
-        :param border_width: 边框宽度
-        :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
-        """
-        super().__init__(fg, bg)
-        self.border = border
-        self.corner_radius = corner_radius
-        self.border_width = border_width
-        self.border_style = border_style
-
-    @classmethod
-    def load(cls, style: Style) -> 'BtnStyle':
-        colors = style.colors
-        return cls(
-            fg=Foreground.from_colors(colors.text),
-            bg=Background.from_colors(colors.control_fill),
-            border=Border.from_colors(colors.control_stroke),
-            corner_radius=6,
-            border_width=1,
-            border_style=wx.PENSTYLE_SOLID
-        )
-
-
-class HyperlinkBtnStyle(BtnStyle):
-    @classmethod
-    def load(cls, style: Style) -> 'BtnStyle':
-        widget_style = super().load(style)
-        widget_style.bg.normal = TRANSPARENT_COLOR
-        if not style.is_dark:
-            widget_style.bg.hover = wx.Colour(0, 0, 0, 10)
-            widget_style.bg.pressed = wx.Colour(0, 0, 0, 6)
-        widget_style.bg.disabled = TRANSPARENT_COLOR
-        widget_style.border = Border(TRANSPARENT_COLOR)
-
-        widget_style.fg.normal = style.colors.accent_text.primary
-        widget_style.fg.hover = style.colors.accent_text.secondary
-        widget_style.fg.pressed = style.colors.accent_text.tertiary
-        widget_style.fg.disabled = style.colors.text.disabled
-
-        return widget_style
-
-
-class TextCtrlStyle(WidgetStyle):
-    def __init__(self,
-                 input_fg: wx.Colour,
-                 input_bg: wx.Colour,
-                 border: wx.Colour,
-                 active_tl_border: wx.Colour,
-                 active_br_border: wx.Colour,
-                 cursor: wx.Colour,
-                 select_fg: wx.Colour,
-                 select_bg: wx.Colour,
-
-                 corner_radius: float,
-                 select_corder_radius: float,
-                 border_width: float,
-                 active_border_width: float,
-                 border_style: int):
-        super().__init__(input_fg, input_bg)
-        self.border = border
-        self.active_tl_border = active_tl_border
-        self.active_br_border = active_br_border
-        self.cursor = cursor
-        self.select_fg = select_fg
-        self.select_bg = select_bg
-
-        self.corner_radius = corner_radius
-        self.select_corder_radius = select_corder_radius
-        self.border_width = border_width
-        self.active_border_width = active_border_width
-        self.border_style = border_style
-
-    @staticmethod
-    def load(style: Style) -> 'TextCtrlStyle':
-        colors = style.colors
-
-        return TextCtrlStyle(
-            input_fg=colors.input_fg,
-            input_bg=colors.control_fill.default,
-            border=colors.border,
-            active_tl_border=colors.primary,
-            active_br_border=colors.primary,
-            cursor=colors.input_fg,
-            select_fg=colors.input_fg,
-            select_bg=colors.primary,
-
-            corner_radius=4,
-            select_corder_radius=5,
-            border_width=1,
-            active_border_width=2,
-            border_style=wx.PENSTYLE_SOLID
-        )
-
-    @property
-    def 桃子(self) -> 'TextCtrlStyle':
-        self.active_tl_border = wx.Colour(0xfc, 0xcb, 0x90)
-        self.active_br_border = wx.Colour(0xd5, 0x7e, 0xeb)
-        return self
-
-
-class StaticLineStyle(WidgetStyle):
-    @staticmethod
-    def load(style: Style) -> 'StaticLineStyle':
-        return StaticLineStyle(
-            bg=style.colors.border,
-        )
-
-
-class ProgressBarStyle(WidgetStyle):
-    def __init__(self,
-                 bg: wx.Colour, bar: GradientBrush,
-                 border: GradientPen, corner_radius: float,
-                 full_gradient: bool):
-        super().__init__(bg=bg)
-        self.corner_radius = corner_radius
-        self.bar = bar
-        self.border = border
-        self.full_gradient = full_gradient
-
-    @staticmethod
-    def load(style: Style) -> 'ProgressBarStyle':
-        return ProgressBarStyle(
-            bg=style.colors.control_fill.default,
-            bar=GradientBrush(CT.dark1(style.colors.primary), CT.light1(style.colors.primary)),
-            border=GradientPen(style.colors.border, width=1),
-            corner_radius=5,
-            full_gradient=True
-        )
-
-    @property
-    def 赛博朋克(self) -> 'ProgressBarStyle':
-        self.bar.gradient_stops.SetStartColour(wx.Colour(0x00, 0xdb, 0xde))
-        self.bar.gradient_stops.SetEndColour(wx.Colour(0xfc, 0x00, 0xff))
-        return self
-
-
-class CheckBoxStyle(WidgetStyle):
-    def __init__(self,
-                 fg: wx.Colour,
-                 sym_fg: GradientPen, box_bg: Background, active_bg: Background, border: Background,
-                 box_corner_radius: float, box_size: float):
-        """
-        Args:
-            fg: label's color.
-        """
-        super().__init__(fg)
-        self.sym_pen: GradientPen = sym_fg
-        self.box_bg: Background = box_bg
-        self.active_bg: Background = active_bg
-        self.border: Background = border
-        self.box_corner_radius: float = box_corner_radius
-        self.box_size: float = box_size
-
-    @classmethod
-    def load(cls, style: Style) -> 'CheckBoxStyle':
-        return cls(
-            Foreground.from_colors(style.colors.text),
-            GradientPen(GradientBrush(wx.BLACK if style.is_dark else wx.WHITE), width=2),
-            Background.from_colors(style.colors.control_fill),
-            Background.from_colors(style.colors.accent_fill),
-            Background.from_colors(style.colors.control_strong_stroke),
-            3,
-            20
-        )
-
-
-class ToggleSwitchStyle(WidgetStyle):
-    def __init__(self, fg: Foreground, bg: Background, active_bg: Background, border: Border, sym: GradientBrush, active_sym: GradientBrush):
-        super().__init__(fg, bg)
-        self.active_bg: Background = active_bg
-        self.border: Border = border
-        self.sym: GradientBrush = sym
-        self.active_sym: GradientBrush = active_sym
-
-        self.border_width: float = 1
-        self.box_radius: float = 10
-        self.sym_radius: float = 6
-
-    @classmethod
-    def load(cls, style: Style) -> 'ToggleSwitchStyle':
-        return cls(
-            fg=Foreground.from_colors(style.colors.text),
-            bg=Background.from_colors(style.colors.control_fill),
-            active_bg=Background.from_colors(style.colors.accent_fill),
-            border=Border.from_colors(style.colors.control_strong_stroke),
-            sym=GradientBrush(style.colors.control_strong.default),
-            active_sym=GradientBrush(wx.BLACK if style.is_dark else wx.WHITE)
-        )

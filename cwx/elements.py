@@ -58,7 +58,8 @@ class BaseElement:
         else:
             return MaskState.NONE
 
-    def draw(self, gc: 'CustomGraphicsContext'): ...
+    def draw(self, gc: 'CustomGraphicsContext'):
+        ...
 
     @classmethod
     def from_json(cls: Any, wnd: wx.Window, obj: dict[str, Any]) -> Any:
@@ -99,7 +100,6 @@ class RectElement(ColorGradientWrapper):
         gc.SetPen(self.stroke.create_pen())
         if self.align == Align.TOP_LEFT:
             gc.DrawRoundedRectangle(self.x, self.y, self.width, self.height, self.corner_radius)
-
 
 
 class LabelElement(BaseElement):

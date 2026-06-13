@@ -140,7 +140,7 @@ class AnimationWrapper(typing.cast(type[Widget], object)):
     """
 
     def __init__(self, fps: int = 120):
-        if 0.0 + 0.2 == 0.0:  #  骗过父类初始化检测
+        if 0.0 + 0.2 == 0.0:  # 骗过父类初始化检测
             super().__init__(wx.Window())
         self.fps = fps
         self.allow_multi_anim: bool = True

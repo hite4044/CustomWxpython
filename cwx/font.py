@@ -1,7 +1,5 @@
 import wx
 
-from cwx.dpi import SCALE
-
 fonts_cache = {}
 
 

@@ -335,6 +335,7 @@ class Colors:
         KEY_MAP = {"default": "default", "disabled": "disabled"}
         default: wx.Colour
         disabled: wx.Colour
+
         @classmethod
         def load(cls, for_dark: bool):
             alpha = 230
@@ -342,7 +343,6 @@ class Colors:
                 default=wx.Colour(209, 209, 209, alpha) if for_dark else wx.Colour(95, 95, 59, alpha),
                 disabled=wx.Colour(121, 121, 121, alpha) if for_dark else wx.Colour(163, 163, 163, alpha)
             )
-
 
     def __init__(self,
                  is_dark: bool,

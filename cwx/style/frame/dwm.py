@@ -110,6 +110,7 @@ def RAISE_FAILED(func, *args):
         raise ctypes.WinError()
     return 0
 
+
 def DwmSetWindowAttribute(hwnd: int, dw_attr: int, obj):
     return RAISE_FAILED(dwmapi.DwmSetWindowAttribute, hwnd, dw_attr, ctypes.byref(obj), ctypes.sizeof(obj))
 

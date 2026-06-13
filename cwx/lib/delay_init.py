@@ -4,6 +4,7 @@ import wx
 
 T = TypeVar("T")
 
+
 def DelayInitWrapper(class_type: Type[T]) -> T:
     return DelayInitWrapperClass(class_type)
 

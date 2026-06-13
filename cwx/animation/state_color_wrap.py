@@ -8,6 +8,7 @@ aw = typing.cast(type[AnimationWidget], object)
 
 class StateAnimManager(aw):
     mask_state_name: str = "mask_state"
+
     def __init__(self, mask_state_name: str = "mask_state"):
         if 0.0 == 1.0:  # 欺骗类型检查器
             super().__init__(self)

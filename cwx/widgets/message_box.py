@@ -1,10 +1,9 @@
 import wx
 
 import cwx
-from cwx.style import TopLevelStyle
 from cwx.lib.flag_parser import parse_flag
 from cwx.lib.sizer import PaddedBoxSizer
-from cwx.widgets.frame import Dialog
+from cwx.widgets.frame import Dialog, TopLevelStyle
 
 
 class MessageDialog(Dialog):
@@ -13,7 +12,8 @@ class MessageDialog(Dialog):
                  widget_style: TopLevelStyle | None = None):
         super().__init__(parent, title=caption, pos=pos, style=wx.CAPTION, widget_style=widget_style)
 
-        self.icon_type = parse_flag(style, wx.ICON_INFORMATION, wx.ICON_WARNING, wx.ICON_ERROR, wx.ICON_QUESTION, default=wx.ICON_INFORMATION)
+        self.icon_type = parse_flag(style, wx.ICON_INFORMATION, wx.ICON_WARNING, wx.ICON_ERROR, wx.ICON_QUESTION,
+                                    default=wx.ICON_INFORMATION)
         self.btn_type = parse_flag(style, wx.OK, wx.OK | wx.CANCEL, wx.YES_NO, default=wx.OK)
 
         self.context = cwx.StaticText(self, label=message)
@@ -90,7 +90,6 @@ class MessageDialog(Dialog):
         if btn is None:
             return
         btn.SetLabel(label)
-
 
 
 if __name__ == '__main__':

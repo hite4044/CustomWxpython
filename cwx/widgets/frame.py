@@ -3,12 +3,53 @@ from os.path import abspath
 
 import wx
 
+from cwx.lib.settings import GlobalSettings
 from cwx.render import CustomGraphicsContext
-from cwx.style import TopLevelStyle, Style, FrameTheme, AccentState
+from cwx.style import WidgetStyle, Style, FrameTheme, AccentState, Background
 from cwx.style.frame import set_window_composition, set_caption_color, set_frame_dark, BackdropType, \
     set_window_backdrop, DwmExtendFrameIntoClientArea
 from cwx.tools import set_multi_size_icon
 from cwx.widgets import Widget, TopWindowCanvas
+
+
+class TopLevelStyle(WidgetStyle):
+    bg: wx.Colour
+
+    def __init__(self, bg: Background,
+                 caption_theme: FrameTheme,
+                 backdrop_type: BackdropType,
+                 accent_type: AccentState,
+                 accent_color: wx.Colour | None = None):
+        super().__init__(bg=bg)
+        self.raw_bg = bg
+        self.is_default_bg = True
+        self.caption_theme = caption_theme
+        self.backdrop_type = backdrop_type
+
+        self.accent_state = accent_type
+        self.accent_color: wx.Colour | None = accent_color  # 颜色记得带透明度, CT.with_alpha
+        "颜色记得带透明度, CT.with_alpha"
+
+    @classmethod
+    def load(cls, style: Style) -> 'TopLevelStyle':
+        return cls(
+            bg=Background((wx.Colour(32, 32, 32) if style.is_dark else wx.Colour(243, 243, 243))),
+            caption_theme=GlobalSettings.default_caption_theme,
+            backdrop_type=GlobalSettings.default_backdrop_type,
+            accent_type=GlobalSettings.default_frame_accent,
+        )
+
+    @property
+    def bg(self):
+        return self.raw_bg
+
+    @bg.setter
+    def bg(self, value: wx.Colour):
+        self.raw_bg = value
+        self.is_default_bg = False
+
+
+Style.register_style_cls(TopLevelStyle)
 
 
 class TopLevelWrapper(Widget):

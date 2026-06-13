@@ -57,6 +57,5 @@ class TextWarp(ComfortEnum):
     WORD_CHAR = 2
 
 
-
 if __name__ == '__main__':
     print(CenterAlign.format("topleft"))

@@ -8,12 +8,12 @@ import wx
 
 from .animation_widget import AnimationWrapper
 from .base_widget import MaskState, Widget
+from ..animation.adv_anim import StateGradientAnimation
 from ..animation.state_color_wrap import StateAnimManager
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
-from ..animation.adv_anim import StateGradientAnimation
 from ..render import CustomGraphicsContext
-from ..style import Style, BtnStyle, HyperlinkBtnStyle
+from ..style import Style, WidgetStyle, Foreground, Background, Border, TRANSPARENT_COLOR
 
 cwxEVT_BUTTON = wx.NewEventType()
 EVT_BUTTON = wx.PyEventBinder(cwxEVT_BUTTON, 1)
@@ -21,6 +21,49 @@ EVT_BUTTON = wx.PyEventBinder(cwxEVT_BUTTON, 1)
 
 class ButtonEvent(SimpleCommandEvent):
     eventType: int = cwxEVT_BUTTON
+
+
+class BtnStyle(WidgetStyle):
+    fg: Foreground
+    bg: Background
+    border: Border
+
+    def __init__(self,
+                 fg: Foreground,
+                 bg: Background,
+                 border: Border,
+                 corner_radius: float,
+                 border_width: float,
+                 border_style: int,
+                 ):
+        """
+        :param fg: 按钮文字
+        :param bg: 按钮背景
+        :param border: 按钮边框
+        :param corner_radius: 边框圆角半径
+        :param border_width: 边框宽度
+        :param border_style: 边框样式 (wx.GraphicsPenInfo的样式)
+        """
+        super().__init__(fg, bg)
+        self.border = border
+        self.corner_radius = corner_radius
+        self.border_width = border_width
+        self.border_style = border_style
+
+    @classmethod
+    def load(cls, style: Style) -> 'BtnStyle':
+        colors = style.colors
+        return cls(
+            fg=Foreground.from_colors(colors.text),
+            bg=Background.from_colors(colors.control_fill),
+            border=Border.from_colors(colors.control_stroke),
+            corner_radius=6,
+            border_width=1,
+            border_style=wx.PENSTYLE_SOLID
+        )
+
+
+Style.register_style_cls(BtnStyle)
 
 
 # class AutoBaseColorWrapper
@@ -155,6 +198,28 @@ class Button(ButtonBase):
         label = self.GetLabel()
         t_w, t_h, t_x, t_y = type_cast(tuple[int, int, int, int], gc.GetFullTextExtent(label))
         gc.DrawText(label, int((w - t_w) / 2), int((h - t_h) / 2))
+
+
+class HyperlinkBtnStyle(BtnStyle):
+    @classmethod
+    def load(cls, style: Style) -> 'BtnStyle':
+        widget_style = super().load(style)
+        widget_style.bg.normal = TRANSPARENT_COLOR
+        if not style.is_dark:
+            widget_style.bg.hover = wx.Colour(0, 0, 0, 10)
+            widget_style.bg.pressed = wx.Colour(0, 0, 0, 6)
+        widget_style.bg.disabled = TRANSPARENT_COLOR
+        widget_style.border = Border(TRANSPARENT_COLOR)
+
+        widget_style.fg.normal = style.colors.accent_text.primary
+        widget_style.fg.hover = style.colors.accent_text.secondary
+        widget_style.fg.pressed = style.colors.accent_text.tertiary
+        widget_style.fg.disabled = style.colors.text.disabled
+
+        return widget_style
+
+
+Style.register_style_cls(HyperlinkBtnStyle)
 
 
 class HyperlinkButton(Button):

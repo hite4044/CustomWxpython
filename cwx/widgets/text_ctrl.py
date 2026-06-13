@@ -12,7 +12,6 @@ class TextEvent(SimpleCommandEvent):
     eventType: int = cwxEVT_TEXT
 
 
-
 class TextCtrlBase(Widget):
     def __init__(self, parent: wx.Window, text: str, widget_style: WidgetStyle = None):
         super().__init__(parent, widget_style=widget_style)

@@ -8,7 +8,39 @@ from .animation_widget import AnimationWrapper
 from ..animation import EZKeyFrameAnimation, KeyFrameCurves
 from ..dpi import SCALE
 from ..render import GCRender, ARC, CustomGraphicsContext
-from ..style import ProgressBarStyle, Style
+from ..style import Style, WidgetStyle
+from ..style.color import GradientBrush, GradientPen, CT
+
+
+class ProgressBarStyle(WidgetStyle):
+    def __init__(self,
+                 bg: wx.Colour, bar: GradientBrush,
+                 border: GradientPen, corner_radius: float,
+                 full_gradient: bool):
+        super().__init__(bg=bg)
+        self.corner_radius = corner_radius
+        self.bar = bar
+        self.border = border
+        self.full_gradient = full_gradient
+
+    @staticmethod
+    def load(style: Style) -> 'ProgressBarStyle':
+        return ProgressBarStyle(
+            bg=style.colors.control_fill.default,
+            bar=GradientBrush(CT.dark1(style.colors.primary), CT.light1(style.colors.primary)),
+            border=GradientPen(style.colors.border, width=1),
+            corner_radius=5,
+            full_gradient=True
+        )
+
+    @property
+    def 赛博朋克(self) -> 'ProgressBarStyle':
+        self.bar.gradient_stops.SetStartColour(wx.Colour(0x00, 0xdb, 0xde))
+        self.bar.gradient_stops.SetEndColour(wx.Colour(0xfc, 0x00, 0xff))
+        return self
+
+
+Style.register_style_cls(ProgressBarStyle)
 
 
 class ProgressBar(Widget, AnimationWrapper):

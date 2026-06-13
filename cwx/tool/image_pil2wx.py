@@ -10,4 +10,3 @@ def PilImg2WxImg(image: Image.Image) -> wx.Image:
     bitmap.alpha_buffer = image.getchannel("A").tobytes()
     bitmap.SetAlphaBuffer(bitmap.alpha_buffer)
     return bitmap
-

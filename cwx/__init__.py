@@ -1,6 +1,6 @@
+from cwx.style.__init__ import *
 from .animation import AnimationGroup
 from .font import ft
-from cwx.style.__init__ import *
 from .widgets import *
 
 __all__ = [

@@ -2,15 +2,16 @@ import wx
 
 from .animation_widget import AnimationWrapper
 from .base_widget import MaskState, Widget
+from ..animation import KeyFrameCurves, MAKE_ANIMATION, ColorGradientAnimation
 from ..animation.adv_anim import StateGradientAnimation
 from ..animation.state_color_wrap import StateAnimManager
-from ..animation import KeyFrameCurves, MAKE_ANIMATION, ColorGradientAnimation
 from ..dpi import SCALE
 from ..event import SimpleCommandEvent
+from ..lib.animation_elements import DrawLinesAE
 from ..lib.flag_parser import parse_flag
 from ..render import CustomGraphicsContext
-from ..style import WidgetStyle, CheckBoxStyle, Style
-from ..lib.animation_elements import DrawLinesAE
+from ..style import WidgetStyle, Style, Background, Foreground
+from ..style.color import GradientBrush, GradientPen
 
 cwxEVT_CHECKBOX = wx.NewEventType()
 EVT_CHECKBOX = wx.PyEventBinder(cwxEVT_CHECKBOX, 1)
@@ -29,6 +30,39 @@ class CheckBoxEvent(SimpleCommandEvent):
 
     def Get3State(self):
         return self.state
+
+
+class CheckBoxStyle(WidgetStyle):
+    def __init__(self,
+                 fg: wx.Colour,
+                 sym_fg: GradientPen, box_bg: Background, active_bg: Background, border: Background,
+                 box_corner_radius: float, box_size: float):
+        """
+        Args:
+            fg: label's color.
+        """
+        super().__init__(fg)
+        self.sym_pen: GradientPen = sym_fg
+        self.box_bg: Background = box_bg
+        self.active_bg: Background = active_bg
+        self.border: Background = border
+        self.box_corner_radius: float = box_corner_radius
+        self.box_size: float = box_size
+
+    @classmethod
+    def load(cls, style: Style) -> 'CheckBoxStyle':
+        return cls(
+            Foreground.from_colors(style.colors.text),
+            GradientPen(GradientBrush(wx.BLACK if style.is_dark else wx.WHITE), width=2),
+            Background.from_colors(style.colors.control_fill),
+            Background.from_colors(style.colors.accent_fill),
+            Background.from_colors(style.colors.control_strong_stroke),
+            3,
+            20
+        )
+
+
+Style.register_style_cls(CheckBoxStyle)
 
 
 class CheckBox(Widget, AnimationWrapper, StateAnimManager):
@@ -138,9 +172,9 @@ class CheckBox(Widget, AnimationWrapper, StateAnimManager):
         """获取勾选框位置"""
         w, h = self.GetTupClientSize()
         box_size = (self.style.box_size * SCALE,) * 2
-        if not self.align_right: # left
+        if not self.align_right:  # left
             box_pos = (self.PAD, (h - box_size[1]) / 2)
-        else: # right
+        else:  # right
             box_pos = (w - self.PAD - box_size[0], (h - box_size[1]) / 2)
         return box_pos, box_size
 

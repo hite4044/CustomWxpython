@@ -6,6 +6,7 @@ from ..render import CustomGraphicsContext
 
 class AnimationElement:
     CGC = CustomGraphicsContext  # 只是为了保持引用
+
     def draw(self, gc: 'CustomGraphicsContext'):
         pass
 

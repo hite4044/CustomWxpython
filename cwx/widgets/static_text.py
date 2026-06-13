@@ -1,13 +1,12 @@
-import platform
 from math import ceil
 from typing import cast as type_cast
 
 import wx
 
-from .base_widget import Widget
-from cwx.lib.perf import Counter
 from cwx.render import CustomGraphicsContext
 from cwx.style import WidgetStyle
+from .base_widget import Widget
+
 
 class StaticText(Widget):
     """一段不可选中的文字"""
@@ -36,6 +35,6 @@ class StaticText(Widget):
 
     def draw_content(self, gc: CustomGraphicsContext):
         gc.SetFont(self.GetFont(), self.style.fg)
-        #timer = Counter(create_start=True)
+        # timer = Counter(create_start=True)
         gc.DrawText(self.GetLabel(), 0, 0)
-        #print(timer.endT())
+        # print(timer.endT())

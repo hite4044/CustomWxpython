@@ -1,14 +1,43 @@
 import wx
 
-from .animation_widget import AnimationWrapper
 from cwx.widgets.base_widget import Widget
+from .animation_widget import AnimationWrapper
 from ..animation import MultiColorGradientAnimation, KeyFrameAnimation, MAKE_ANIMATION, KeyFrameCurves
 from ..dpi import SCALE, translate_size
 from ..render import CustomGraphicsContext
-from ..style import WidgetStyle, ToggleSwitchStyle, Style
+from ..style import WidgetStyle, Style, Background, Foreground, Border
+from ..style.color import GradientBrush
 
 TS_OFF = 0
 TS_ON = 1
+
+
+class ToggleSwitchStyle(WidgetStyle):
+    def __init__(self, fg: Foreground, bg: Background, active_bg: Background, border: Border, sym: GradientBrush,
+                 active_sym: GradientBrush):
+        super().__init__(fg, bg)
+        self.active_bg: Background = active_bg
+        self.border: Border = border
+        self.sym: GradientBrush = sym
+        self.active_sym: GradientBrush = active_sym
+
+        self.border_width: float = 1
+        self.box_radius: float = 10
+        self.sym_radius: float = 6
+
+    @classmethod
+    def load(cls, style: Style) -> 'ToggleSwitchStyle':
+        return cls(
+            fg=Foreground.from_colors(style.colors.text),
+            bg=Background.from_colors(style.colors.control_fill),
+            active_bg=Background.from_colors(style.colors.accent_fill),
+            border=Border.from_colors(style.colors.control_strong_stroke),
+            sym=GradientBrush(style.colors.control_strong.default),
+            active_sym=GradientBrush(wx.BLACK if style.is_dark else wx.WHITE)
+        )
+
+
+Style.register_style_cls(ToggleSwitchStyle)
 
 
 class ToggleSwitch(Widget, AnimationWrapper):
@@ -145,7 +174,7 @@ class ToggleSwitch(Widget, AnimationWrapper):
             else:
                 gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(self.crt_border, width=round(SCALE))))
             gc.DrawInnerRoundedRect(0, 0, 40 * SCALE, 20 * SCALE, self.style.box_radius * SCALE,
-                                        self.style.border_width * SCALE)
+                                    self.style.border_width * SCALE)
 
             # 绘制开关
             if self.is_on:

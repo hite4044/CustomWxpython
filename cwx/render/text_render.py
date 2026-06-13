@@ -4,7 +4,7 @@ from io import BytesIO
 from math import ceil
 from typing import Union
 
-from PIL import Image, ImageEnhance, ImageDraw
+from PIL import Image, ImageEnhance
 
 from cwx.lib.perf import Counter
 from cwx.tool.image_pil2wx import PilImg2WxImg
