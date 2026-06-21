@@ -195,6 +195,10 @@ class CustomGraphicsContext(JumpSubClassCheck.GCType):
     TRANSPARENT_COLOR = wx.Colour(0, 0, 0, 0)
 
     def EmptyPen(self):
+        """
+        设置当前画笔为空画笔
+        Empty the current pen.
+        """
         self.SetPen(self.CreatePen(wx.GraphicsPenInfo(self.TRANSPARENT_COLOR, width=0)))
 
     def EmptyBrush(self):
@@ -282,14 +286,20 @@ class GCRender:
         dn_pad = dn_offset + corner_radius
         radius = corner_radius
 
-        path.AddArc(pad, pad, radius, ARC(270), ARC(180), 0)
-        # path.AddLineToPoint(offset, h - pad)
-        path.AddArc(pad, h - dn_pad, radius, ARC(180), ARC(90), 0)
-        # path.AddLineToPoint(w - pad, h - dn_offset)
-        path.AddArc(w - dn_pad, h - dn_pad, radius, ARC(90), ARC(0), 0)
-        # path.AddLineToPoint(w - dn_offset, pad)
-        path.AddArc(w - dn_pad, pad, radius, ARC(0), ARC(270), 0)
-        path.AddLineToPoint(pad, offset)
+        real_width = w - offset - dn_offset
+        if real_width < 2 * radius:
+            p = math.degrees(math.asin(1 - real_width / (2.0 * radius)))
+        else:
+            p = 0
+        path.AddArc(pad, pad, radius, ARC(270 - p), ARC(180), 0)
+
+        path.AddArc(pad, h - dn_pad, radius, ARC(180), ARC(90 + p), 0)
+
+        path.AddArc(w - dn_pad, h - dn_pad, radius, ARC(90 - p), ARC(0), 0)
+
+        path.AddArc(w - dn_pad, pad, radius, ARC(0), ARC(270 + p), 0)
+
+        path.CloseSubpath()
 
         gc.DrawPath(path)
 

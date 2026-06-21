@@ -1,11 +1,12 @@
 import wx
 
+from cwx.animation import EZKeyFrameAnimation, KeyFrameCurves
+from cwx.dpi import SCALE
 from cwx.render import CustomGraphicsContext
 from cwx.style import WidgetStyle, Style
 from cwx.style.color import TRANSPARENT_COLOR
 from cwx.widgets.animation_widget import AnimationWrapper
-from cwx.widgets.base_widget import Widget
-from cwx.dpi import SCALE
+from cwx.widgets.base_widget import Widget, MaskState
 
 
 class SliderStyle(WidgetStyle):
@@ -44,13 +45,73 @@ Style.register_style_cls(SliderStyle)
 
 class Slider(Widget, AnimationWrapper):
     style: SliderStyle
+    handle_scale_anim: EZKeyFrameAnimation
 
     def __init__(self, parent: wx.Window):
         super().__init__(parent)
+        AnimationWrapper.__init__(self)
 
         self.percent: float = 0.5
         self.handle_scale: float = 0.5
+        self.normal_scale: float = 0.5
+        self.float_scale: float = 0.7
+        self.click_scale: float = 0.35
+        self.mask_state = MaskState.NONE
+        self.drag_start_percent = 0
+        self.drag_start_x = 0
+
+        self.handle_scale_anim = self.reg_animation(
+            "handle_scale", EZKeyFrameAnimation(0.15, KeyFrameCurves.QUADRATIC_EASE, 0.5, 0.5))
+        self.handle_value("handle_scale", "handle_scale")
+
         self.update_size()
+
+        self.Bind(wx.EVT_MOUSE_EVENTS, self.on_mouse_events)
+
+    def on_mouse_events(self, event: wx.MouseEvent):
+        def update_handle_pos():
+            x, y, w, h = self.get_bar_box()
+            self.percent = max(0.0, min(1.0, self.drag_start_percent + (event.GetX() / SCALE - self.drag_start_x) / w))
+            self.Refresh()
+
+        event.Skip()
+        last_mask_state = self.mask_state
+        in_box = wx.Rect2D(*(map(lambda t: t * SCALE, self.get_handle_box()))).Contains(wx.Point2D(event.GetPosition()))
+        if event.ButtonDown() and in_box:
+            self.mask_state = MaskState.PRESSED
+            self.drag_start_percent = self.percent
+            self.drag_start_x = event.GetX() / SCALE
+            self.CaptureMouse()
+            update_handle_pos()
+        elif (event.Moving() or event.Dragging()) and event.LeftIsDown():
+            self.mask_state = MaskState.PRESSED
+            update_handle_pos()
+        elif event.ButtonUp():
+            if in_box:
+                self.mask_state = MaskState.HOVER
+            else:
+                self.mask_state = MaskState.NONE
+            self.ReleaseMouse()
+            update_handle_pos()
+        elif event.Leaving():
+            self.mask_state = MaskState.NONE
+        elif in_box:
+            self.mask_state = MaskState.HOVER
+        else:
+            self.mask_state = MaskState.NONE
+
+        if self.mask_state != last_mask_state:
+            if self.mask_state == MaskState.HOVER:
+                self.handle_scale_anim.set_range(self.handle_scale_anim.value, self.float_scale)
+            elif self.mask_state == MaskState.PRESSED:
+                self.handle_scale_anim.set_range(self.handle_scale_anim.value, self.click_scale)
+            elif self.mask_state == MaskState.NONE:
+                self.handle_scale_anim.set_range(self.handle_scale_anim.value, self.normal_scale)
+            self.play_animation("handle_scale")
+            self.Refresh()
+
+    def animation_callback(self):
+        self.Refresh()
 
     def update_size(self):
         size = (100, int(max(self.style.bar_height, self.style.handle_size)))
@@ -76,19 +137,28 @@ class Slider(Widget, AnimationWrapper):
     def draw_bar(self, gc: CustomGraphicsContext):
         """绘制背景条"""
         x, y, w, h = self.get_bar_box()
+        r = self.style.handle_size / 2
+        x_offset = max(r * 2, (w - self.style.handle_size) * self.percent + r)
         gc.SetPen(gc.CreatePen(wx.GraphicsPenInfo(TRANSPARENT_COLOR, width=0)))
         gc.SetBrush(wx.Brush(self.style.bar_bg))
-        gc.DrawRoundedRectangle(x, y, w, self.style.bar_height, 2)
+        gc.DrawInnerRoundedRect(x + r, y, w - r * 2, self.style.bar_height, self.style.bar_height / 2, 0)
         gc.SetBrush(wx.Brush(self.style.bar_fg))
-        gc.DrawRoundedRectangle(x, y, w * self.percent, self.style.bar_height, 2)
+        gc.DrawInnerRoundedRect(x + r, y, x_offset - r * 2, self.style.bar_height, self.style.bar_height / 2, 0)
+
+    def get_handle_box(self) -> tuple[float, float, float, float]:
+        x, y, w, h = self.get_bar_box()
+        r = self.style.handle_size / 2
+        x_offset = (w - self.style.handle_size) * self.percent + r
+        return x + x_offset - r, y, self.style.handle_size, self.style.handle_size
 
     def draw_handle(self, gc: CustomGraphicsContext):
         x, y, w, h = self.get_bar_box()
         with gc.State:
-            x_offset = w * self.percent
             r = self.style.handle_size / 2
+            x_offset = (w - self.style.handle_size) * self.percent + r
             gc.Translate(x + x_offset, y + self.style.bar_height / 2)  # 定位滑杆中心
             gc.EmptyPen()
+            # gc.DrawInnerRoundedRect()
             # 绘制大圆
             gc.SetBrush(gc.CreateBrush(wx.Brush(self.style.handle_bg)))
             gc.DrawCircle(0, 0, r)

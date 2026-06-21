@@ -301,7 +301,7 @@ class TopWindowCanvas:
             if isinstance(child, Widget):
                 self.draw_wnd(gc, self.canvas_host, child)
         t = timer.end()
-        print("Each frame:", str(t) + "ms", ",fps:", round(1 / t, 2))
+        print(f"Each frame: {round(t * 1000, 2)}ms, fps: {round(1 / t, 2)}")
 
     def draw_wnd(self, gc: CustomGraphicsContext, root_window: wx.Window, window: Widget):
         # 计算位置

@@ -58,7 +58,7 @@ class ToggleSwitch(Widget, AnimationWrapper):
     def __init__(self, parent: wx.Window, label: str = "", style: int = TS_OFF,
                  widget_style: WidgetStyle | None = None):
         super().__init__(parent, widget_style=widget_style)
-        AnimationWrapper.__init__(self, fps=60)
+        AnimationWrapper.__init__(self)
         self.is_on: bool = bool(style & TS_ON)
 
         self.init_animation()
@@ -150,10 +150,6 @@ class ToggleSwitch(Widget, AnimationWrapper):
             self.init_animation()
 
     def animation_callback(self):
-        if self.sym_anim.is_playing:
-            pass
-        else:
-            return
         self.Refresh()
 
     def draw_content(self, gc: CustomGraphicsContext):

@@ -214,6 +214,10 @@ class KeyFrameAnimation(Animation):
         self.percent_offset = 0
         super().stop()
 
+    @classmethod
+    def simple(cls, during: float, way: KeyFrameCurves, start: float, end: float):
+        return cls(during, [KeyFrame(way, 0, start), KeyFrame(way, 1, end)])
+
 
 class EZKeyFrameAnimation(KeyFrameAnimation):
     def __init__(self, during: float, way: KeyFrameCurves, start: float, end: float):

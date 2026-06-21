@@ -50,7 +50,7 @@ class Frame(cwx.Frame):
 
         sizer.AddSpacer(5)
 
-        bar = cwx.ProgressBar(self, value=5)
+        bar = cwx.ProgressBar(self, value=3)
 
         # bar.load_widget_style(bar.style.赛博朋克)
         def func1():
